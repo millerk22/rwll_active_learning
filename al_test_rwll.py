@@ -144,20 +144,14 @@ def random(u):
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser(description="Run Larger Tests in Parallel of Active Learning Test for RW Laplace Learning")
+    parser = ArgumentParser(description="Run Large Tests in Parallel of Active Learning Test for RW Laplace Learning")
     parser.add_argument("--dataset", type=str, default='mnist-evenodd')
     parser.add_argument("--metric", type=str, default='vae')
-    parser.add_argument("--tau", type=float, default=0.01)
-    parser.add_argument("--numcores", type=int, default=4)
+    parser.add_argument("--numcores", type=int, default=6)
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--labelseed", type=int, default=2)
     parser.add_argument("--numtests", type=int, default=5)
     args = parser.parse_args()
-
-    if args.tau == 0.0:
-        tau = None
-    else:
-        tau = args.tau
 
     X, labels = gl.datasets.load(args.dataset.split("-")[0], metric=args.metric)
 
@@ -187,17 +181,15 @@ if __name__ == "__main__":
             G.save(graph_filename)
 
 
-
+    ############################################
+    ####### Can Change these variables #########
+    ############################################
     acc_models = {'poisson':gl.ssl.poisson(G),  # poisson learning
                 'rwll0':gl.ssl.laplace(G, reweighting='poisson'),  # reweighted laplace learning, tau = 0
                 'rwll001':poisson_rw_laplace(G, tau=0.001),  # reweighted laplace learning, tau = 0.001
                  'rwll01':poisson_rw_laplace(G, tau=0.01),  # reweighted laplace learning, tau = 0.01
                  'rwll1':poisson_rw_laplace(G, tau=0.1)}   # reweighted laplace learning, tau = 0.1
-
-    ############################################
-    ####### Can Change these variables #########
-    ############################################
-
+                 
     acq_funcs_names = ['poisson_unc', 'rwll0_unc', 'rwll001_unc', 'rwll01_unc', 'rwll1_unc', 'random']
     acq_funcs = [unc, unc, unc, unc, random]
     models = [acc_models['poisson'], acc_models['rwll0'], acc_models['rwll001'], acc_models['rwll01'], acc_models['rwll001'], acc_models['poisson']]
