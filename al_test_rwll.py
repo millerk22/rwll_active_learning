@@ -11,29 +11,6 @@ from glob import glob
 
 
 from joblib import Parallel, delayed
-import contextlib
-import joblib
-
-
-# Wrap joblib with tqdm as a context manager to show progress bar
-@contextlib.contextmanager
-def tqdm_joblib(tqdm_object):
-    """Context manager to patch joblib to report into tqdm progress bar given as argument"""
-    class TqdmBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-
-        def __call__(self, *args, **kwargs):
-            tqdm_object.update(n=self.batch_size)
-            return super().__call__(*args, **kwargs)
-
-    old_batch_callback = joblib.parallel.BatchCompletionCallBack
-    joblib.parallel.BatchCompletionCallBack = TqdmBatchCompletionCallback
-    try:
-        yield tqdm_object
-    finally:
-        joblib.parallel.BatchCompletionCallBack = old_batch_callback
-        tqdm_object.close()
 
 
 class poisson_rw_laplace(gl.ssl.ssl):
@@ -189,12 +166,27 @@ if __name__ == "__main__":
 
     # Construct the similarity graph
     print(f"Constructing similarity graph for {args.dataset}")
-    W = gl.weightmatrix.knn(X, 20)
-    G = gl.graph(W)
-    if not G.isconnected():
-        print("Graph not connected with knn = 20, using knn = 30")
-        W = gl.weightmatrix.knn(X, 30)
-        print(f"\tGraph is connected = {G.isconnected()}")
+    knn = 20
+    graph_filename = os.path.join("data", f"{args.dataset}_{knn}")
+    try:
+        G = gl.graph.load(graph_filename)
+    except:
+        W = gl.weightmatrix.knn(X, knn)
+        G = gl.graph(W)
+        G.save(graph_filename)
+
+    while not G.isconnected():
+        print(f"Graph not connected with knn = {knn}, using knn = {knn+10}")
+        knn += 10
+        graph_filename = os.path.join("data", f"{args.dataset}_{knn}")
+        try:
+            G = gl.graph.load(graph_filename)
+        except:
+            W = gl.weightmatrix.knn(X, knn)
+            G = gl.graph(W)
+            G.save(graph_filename)
+
+
 
     acc_models = {'poisson':gl.ssl.poisson(G),  # poisson learning
                 'rwll0':gl.ssl.laplace(G, reweighting='poisson'),  # reweighted laplace learning, tau = 0
