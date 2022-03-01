@@ -220,7 +220,7 @@ if __name__ == "__main__":
         seed = int(args.labelseed + 3*(it**2))
         labeled_ind = gl.trainsets.generate(labels, rate=1, seed=seed)
 
-        RESULTS_DIR = os.path.join("results", f"{args.dataset}_results_{seed}_{args.iters}}")
+        RESULTS_DIR = os.path.join("results", f"{args.dataset}_results_{seed}_{args.iters}")
         if not os.path.exists(RESULTS_DIR):
             os.makedirs(RESULTS_DIR)
 
