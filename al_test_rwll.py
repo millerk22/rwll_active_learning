@@ -200,10 +200,10 @@ if __name__ == "__main__":
         W = gl.weightmatrix.knn(X, 30)
         print(f"\tGraph is connected = {G.isconnected()}")
 
-    acc_models = {'poisson':gl.ssl.poisson(G), \ # poisson learning
-                'rwll0':gl.ssl.laplace(G, reweighting='poisson'), \ # reweighted laplace learning, tau = 0
-                'rwll001':poisson_rw_laplace(G, tau=0.001), \ # reweighted laplace learning, tau = 0.001
-                 'rwll01':poisson_rw_laplace(G, tau=0.01), \ # reweighted laplace learning, tau = 0.01
+    acc_models = {'poisson':gl.ssl.poisson(G),  # poisson learning
+                'rwll0':gl.ssl.laplace(G, reweighting='poisson'),  # reweighted laplace learning, tau = 0
+                'rwll001':poisson_rw_laplace(G, tau=0.001),  # reweighted laplace learning, tau = 0.001
+                 'rwll01':poisson_rw_laplace(G, tau=0.01),  # reweighted laplace learning, tau = 0.01
                  'rwll1':poisson_rw_laplace(G, tau=0.1)}   # reweighted laplace learning, tau = 0.1
 
     ############################################
