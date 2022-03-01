@@ -239,7 +239,7 @@ if __name__ == "__main__":
             else:
                 iterator_object = range(iters)
 
-            for it in iterator_object:
+            for j in iterator_object:
                 if acq_func_name == "random":
                     k = np.random.choice(np.delete(np.arange(G.num_nodes), train_ind))
                 else:
