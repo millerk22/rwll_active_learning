@@ -210,6 +210,8 @@ if __name__ == "__main__":
     acq_funcs = [unc, unc, unc, unc, random]
     models = [acc_models['poisson'], acc_models['rwll0'], acc_models['rwll001'], acc_models['rwll01'], acc_models['rwll001'], acc_models['poisson']]
 
+    if args.numcores > len(models):
+        args.numcores = len(models)
 
     # Iterations for the different tests
     for it in range(args.numtests):
@@ -223,7 +225,7 @@ if __name__ == "__main__":
         all_accs = {}
         all_choices = {}
         iters = args.iters
-        def active_learning_test(acq_func_name, acq_func, model):
+        def active_learning_test(acq_func_name, acq_func, model, show_tqdm):
             acc = {name : [] for name in acc_models}
             # compute initial accuracies in each of the accuracy models
             for name, ssl_model in acc_models.items():
@@ -231,8 +233,13 @@ if __name__ == "__main__":
                 acc[name].append(gl.ssl.ssl_accuracy(pred_labels, labels, labeled_ind.size))
 
             train_ind = labeled_ind.copy()
-            
-            for it in range(iters):
+
+            if show_tqdm:
+                iterator_object = tqdm(range(iters), desc=f"{args.dataset} test {it+1}/{args.numtests}, seed = {seed}")
+            else:
+                iterator_object = range(iters)
+
+            for it in iterator_object:
                 if acq_func_name == "random":
                     k = np.random.choice(np.delete(np.arange(G.num_nodes), train_ind))
                 else:
@@ -257,8 +264,11 @@ if __name__ == "__main__":
             return
 
         print("------Starting Active Learning Tests-------")
-        with tqdm_joblib(tqdm(desc=f"{args.dataset} test {it+1}/{args.numtests}, seed = {seed}", total=len(models))) as progress_bar:
-            Parallel(n_jobs=args.numcores)(delayed(active_learning_test)(acq_name, acq, mdl) for acq_name, acq,mdl in zip(acq_funcs_names, acq_funcs, models))
+        # with tqdm_joblib(tqdm(desc=f"{args.dataset} test {it+1}/{args.numtests}, seed = {seed}", total=len(models))) as progress_bar:
+        show_bools = len(models)*[False]
+        show_bools[0] = True
+        Parallel(n_jobs=args.numcores)(delayed(active_learning_test)(acq_name, acq, mdl, show) for acq_name, acq, mdl, show \
+                in zip(acq_funcs_names, acq_funcs, models, show_bools))
 
         # Consolidate results
         print(f"Consolidating results to {os.path.join(RESULTS_DIR, 'accs.csv')}...")
