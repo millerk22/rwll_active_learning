@@ -19,6 +19,27 @@ from joblib import Parallel, delayed
 import time
 
 
+# Wrap joblib with tqdm as a context manager to show progress bar
+@contextlib.contextmanager
+def tqdm_joblib(tqdm_object):
+    """Context manager to patch joblib to report into tqdm progress bar given as argument"""
+    class TqdmBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+
+        def __call__(self, *args, **kwargs):
+            tqdm_object.update(n=self.batch_size)
+            return super().__call__(*args, **kwargs)
+
+    old_batch_callback = joblib.parallel.BatchCompletionCallBack
+    joblib.parallel.BatchCompletionCallBack = TqdmBatchCompletionCallback
+    try:
+        yield tqdm_object
+    finally:
+        joblib.parallel.BatchCompletionCallBack = old_batch_callback
+        tqdm_object.close()
+
+
 class poisson_rw_laplace(gl.ssl.ssl):
     def __init__(self, W=None, class_priors=None, tau=0.0, normalization='combinatorial', tol=1e-5, alpha=2, zeta=1e7, r=0.1):
         """Laplace Learning
@@ -157,6 +178,7 @@ if __name__ == "__main__":
     parser.add_argument("--numcores", type=int, default=4)
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--labelseed", type=int, default=2)
+    parser.add_argument("--numtests", type=int, default=5)
     args = parser.parse_args()
 
     if args.tau == 0.0:
@@ -169,80 +191,106 @@ if __name__ == "__main__":
     if args.dataset.split("-")[-1] == 'evenodd':
         labels = labels % 2
 
-    labeled_ind = gl.trainsets.generate(labels, rate=1, seed=args.labelseed)
-
-
     # Construct the similarity graph
     print(f"Constructing similarity graph for {args.dataset}")
     W = gl.weightmatrix.knn(X, 20)
     G = gl.graph(W)
+    if not G.isconnected():
+        print("Graph not connected with knn = 20, using knn = 30")
+        W = gl.weightmatrix.knn(X, 30)
+        print(f"\tGraph is connected = {G.isconnected()}")
 
     acc_models = {'poisson':gl.ssl.poisson(G), \ # poisson learning
                 'rwll0':gl.ssl.laplace(G, reweighting='poisson'), \ # reweighted laplace learning, tau = 0
-                 'rwll01':poisson_rw_laplace(G, tau=0.01), \ # reweighted laplace learning, tau=0.01
-                 'rwll01':poisson_rw_laplace(G, tau=0.1)}   # reweighted laplace learning, tau=0.01
+                'rwll001':poisson_rw_laplace(G, tau=0.001), \ # reweighted laplace learning, tau = 0.001
+                 'rwll01':poisson_rw_laplace(G, tau=0.01), \ # reweighted laplace learning, tau = 0.01
+                 'rwll1':poisson_rw_laplace(G, tau=0.1)}   # reweighted laplace learning, tau = 0.1
+
     ############################################
     ####### Can Change these variables #########
     ############################################
 
-    acq_funcs_names = ['poisson_unc', 'rwll0_unc', 'rwll01_unc', 'rwll001_unc', 'random']
-    acq_funcs = [unc, unc, unc, random]
-    models = [acc_models['poisson'], acc_models['rwll0'], acc_models['rwll01'], acc_models['rwll001'], acc_models['poisson']]
-
-    RESULTS_DIR = os.path.join("results", f"{args.dataset}_results_{args.labelseed}_{args.iters}}")
-    if not os.path.exists(RESULTS_DIR):
-        os.makedirs(RESULTS_DIR)
-
-    all_accs = {}
-    all_choices = {}
-    iters = args.iters
-    def active_learning_test(acq_func_name, acq_func, model):
-        acc = {name : [] for name in acc_models}
-        # compute initial accuracies in each of the accuracy models
-        for name, ssl_model in acc_models.items():
-            pred_labels = ssl_model.fit_predict(labeled_ind, labels[labeled_ind])
-            acc[name].append(gl.ssl.ssl_accuracy(pred_labels, labels, labeled_ind.size))
-
-        train_ind = labeled_ind.copy()
-
-        tic = time.time()
-        for it in range(iters):
-            if acq_func_name == "random":
-                k = np.random.choice(np.delete(np.arange(G.num_nodes), train_ind))
-            else:
-                u = model.fit(train_ind, labels[train_ind])
-                acq_func_vals = acq_func(u)
-
-                # active learning query choice
-                maximizer_inds = np.where(np.isclose(acq_func_vals, acq_func_vals.max()))[0]
-                k = np.random.choice(maximizer_inds)
-
-            # oracle and model update
-            train_ind = np.append(train_ind, k)
+    acq_funcs_names = ['poisson_unc', 'rwll0_unc', 'rwll001_unc', 'rwll01_unc', 'rwll1_unc', 'random']
+    acq_funcs = [unc, unc, unc, unc, random]
+    models = [acc_models['poisson'], acc_models['rwll0'], acc_models['rwll001'], acc_models['rwll01'], acc_models['rwll001'], acc_models['poisson']]
 
 
+    # Iterations for the different tests
+    for it in range(args.numtests):
+        seed = int(args.labelseed + 3*(it**2))
+        labeled_ind = gl.trainsets.generate(labels, rate=1, seed=seed)
+
+        RESULTS_DIR = os.path.join("results", f"{args.dataset}_results_{seed}_{args.iters}}")
+        if not os.path.exists(RESULTS_DIR):
+            os.makedirs(RESULTS_DIR)
+
+        all_accs = {}
+        all_choices = {}
+        iters = args.iters
+        def active_learning_test(acq_func_name, acq_func, model):
+            acc = {name : [] for name in acc_models}
+            # compute initial accuracies in each of the accuracy models
             for name, ssl_model in acc_models.items():
-                pred_labels = ssl_model.fit_predict(train_ind, labels[train_ind])
-                acc[name].append(gl.ssl.ssl_accuracy(pred_labels, labels, train_ind.size))
+                pred_labels = ssl_model.fit_predict(labeled_ind, labels[labeled_ind])
+                acc[name].append(gl.ssl.ssl_accuracy(pred_labels, labels, labeled_ind.size))
 
-            if it == args.iters // 10:
-                print(f"Estimated time left for {acq_func_name} = {9.*(time.time() - tic)/60. : .3f} minutes")
+            train_ind = labeled_ind.copy()
 
-        print(f"\tDone with {acq_func_name}")
-        acc_df = pd.DataFrame(acc)
-        acc_df.to_csv(os.path.join(RESULTS_DIR, f"accs_{acq_func_name}.csv"), index=None)
-        np.save(os.path.join(RESULTS_DIR, f"choices_{acq_func_name}.npy"), train_ind)
-        return
-    print("------Starting Active Learning Tests-------")
-    Parallel(n_jobs=args.numcores)(delayed(active_learning_test)(acq_name, acq, mdl) for acq_name, acq,mdl in zip(acq_funcs_names, acq_funcs, models))
+            tic = time.time()
+            for it in range(iters):
+                if acq_func_name == "random":
+                    k = np.random.choice(np.delete(np.arange(G.num_nodes), train_ind))
+                else:
+                    u = model.fit(train_ind, labels[train_ind])
+                    acq_func_vals = acq_func(u)
 
-    # Consolidate results
-    accs_fnames = glob(os.path.join(RESULTS_DIR, "*.csv"))
-    dfs = []
-    for fname in accs_fnames:
-        df = pd.read_csv(fname)
-        acq_func_name = "".join(fname.split("/")[-1].split(".")[0].split("_")[1:])
-        df.rename(columns=lambda name: acq_func_name + " : " + name, inplace=True)
-        dfs.append(df)
-    acc_df = pd.concat(dfs, axis=1)
-    acc_df.to_csv(os.path.join(RESULTS_DIR, "accs.csv"), index=None)
+                    # active learning query choice
+                    maximizer_inds = np.where(np.isclose(acq_func_vals, acq_func_vals.max()))[0]
+                    k = np.random.choice(maximizer_inds)
+
+                # oracle and model update
+                train_ind = np.append(train_ind, k)
+
+
+                for name, ssl_model in acc_models.items():
+                    pred_labels = ssl_model.fit_predict(train_ind, labels[train_ind])
+                    acc[name].append(gl.ssl.ssl_accuracy(pred_labels, labels, train_ind.size))
+
+            acc_df = pd.DataFrame(acc)
+            acc_df.to_csv(os.path.join(RESULTS_DIR, f"accs_{acq_func_name}.csv"), index=None)
+            np.save(os.path.join(RESULTS_DIR, f"choices_{acq_func_name}.npy"), train_ind)
+            return
+
+        print("------Starting Active Learning Tests-------")
+        with tqdm_joblib(tqdm(desc=f"{args.dataset} test {it+1}/{args.numtests}, seed = {seed}", total=len(models))) as progress_bar:
+            Parallel(n_jobs=args.numcores)(delayed(active_learning_test)(acq_name, acq, mdl) for acq_name, acq,mdl in zip(acq_funcs_names, acq_funcs, models))
+
+        # Consolidate results
+        print(f"Consolidating results to {os.path.join(RESULTS_DIR, 'accs.csv')}...")
+        accs_fnames = glob(os.path.join(RESULTS_DIR, "*.csv"))
+        dfs = []
+        for fname in accs_fnames:
+            df = pd.read_csv(fname)
+            acq_func_name = "".join(fname.split("/")[-1].split(".")[0].split("_")[1:])
+            df.rename(columns=lambda name: acq_func_name + " : " + name, inplace=True)
+            dfs.append(df)
+        acc_df = pd.concat(dfs, axis=1)
+        acc_df.to_csv(os.path.join(RESULTS_DIR, "accs.csv"), index=None)
+
+
+    # Get average and std curves over all tests
+    overall_results_dir = os.path.join("results", f"{args.dataset}_results_{args.iters}")
+    if not os.path.exists(overall_results_dir):
+        os.makedirs(overall_results_dir)
+    overall_results_file = os.path.join(overall_results_dir, "stats.csv")
+    print(f"Saving overall results to {overall_results_file}")
+    acc_files = glob(os.path.join("results", f"{args.dataset}_results_*_{args.iters}", "accs.csv"))
+    dfs = [pd.read_csv(f) for f in acc_files]
+    all_columns = {}
+    for col in dfs[0].columns:
+        vals = np.array([df[col].values for df in dfs])
+        all_columns[col + " : avg"] = np.average(vals, axis=0)
+        all_columns[col + " : std"] = np.std(vals, axis=0)
+
+    all_df = pd.DataFrame(all_columns)
+    all_df.to_csv(overall_results_file, index=None)
