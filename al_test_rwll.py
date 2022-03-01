@@ -11,7 +11,8 @@ from glob import glob
 
 
 from joblib import Parallel, delayed
-import time
+import contextlib
+import joblib
 
 
 # Wrap joblib with tqdm as a context manager to show progress bar
@@ -230,8 +231,7 @@ if __name__ == "__main__":
                 acc[name].append(gl.ssl.ssl_accuracy(pred_labels, labels, labeled_ind.size))
 
             train_ind = labeled_ind.copy()
-
-            tic = time.time()
+            
             for it in range(iters):
                 if acq_func_name == "random":
                     k = np.random.choice(np.delete(np.arange(G.num_nodes), train_ind))
