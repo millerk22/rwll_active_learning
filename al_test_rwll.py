@@ -1,11 +1,6 @@
-'''
-Need to define a new gl.ssl class that does the tau reweighting
-'''
 import numpy as np
 import matplotlib.pyplot as plt
 import graphlearning as gl
-from al_util import *
-from graph_util import *
 import scipy.sparse as sparse
 import pandas as pd
 from tqdm import tqdm
