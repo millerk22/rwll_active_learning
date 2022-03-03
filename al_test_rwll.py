@@ -189,10 +189,13 @@ if __name__ == "__main__":
                 'rwll001':poisson_rw_laplace(G, tau=0.001),  # reweighted laplace learning, tau = 0.001
                  'rwll01':poisson_rw_laplace(G, tau=0.01),  # reweighted laplace learning, tau = 0.01
                  'rwll1':poisson_rw_laplace(G, tau=0.1)}   # reweighted laplace learning, tau = 0.1
-                 
+
     acq_funcs_names = ['poisson_unc', 'rwll0_unc', 'rwll001_unc', 'rwll01_unc', 'rwll1_unc', 'random']
-    acq_funcs = [unc, unc, unc, unc, random]
-    models = [acc_models['poisson'], acc_models['rwll0'], acc_models['rwll001'], acc_models['rwll01'], acc_models['rwll001'], acc_models['poisson']]
+    acq_funcs = [unc, unc, unc, unc, unc, random]
+    models = [acc_models['poisson'], acc_models['rwll0'], acc_models['rwll001'], acc_models['rwll01'], acc_models['rwll1'], acc_models['poisson']]
+
+    assert len(models) == len(acq_funcs)
+    assert len(models) == len(acq_funcs_names)
 
     if args.numcores > len(models):
         args.numcores = len(models)
