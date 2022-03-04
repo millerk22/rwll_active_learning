@@ -9,6 +9,7 @@ import pickle
 import os
 from glob import glob
 from scipy.special import softmax
+from functools import reduce
 
 
 from joblib import Parallel, delayed
@@ -305,10 +306,10 @@ if __name__ == "__main__":
     print(f"Saving overall results to {overall_results_file}")
     acc_files = glob(os.path.join("results", f"{args.dataset}_results_*_{args.iters}", "accs.csv"))
     dfs = [pd.read_csv(f) for f in sorted(acc_files)]
+    possible_columns = reduce(np.union1d, dfs)
     all_columns = {}
-    print(len(dfs[0].columns))
-    for col in dfs[0].columns:
-        vals = np.array([df[col].values for df in dfs])
+    for col in possible_columns:
+        vals = np.array([df[col].values for df in dfs if col in df.columns])
         all_columns[col + " : avg"] = np.average(vals, axis=0)
         all_columns[col + " : std"] = np.std(vals, axis=0)
 
