@@ -201,10 +201,7 @@ if __name__ == "__main__":
             G = gl.graph(W)
             G.save(graph_filename)
 
-    # # eigendecomposition for VOpt, MC, MCVOPT criterions
-    # print("Computing/Retrieving Eigendata...")
-    # evals, evecs = G.eigen_decomp(normalization="combinatorial", k=200, method="lowrank", q=150, c=50)
-    # gamma = 0.1
+
 
 
     ############################################
@@ -220,83 +217,87 @@ if __name__ == "__main__":
     acq_funcs = [uncsftmax]
     models = [acc_models['poisson']]
 
+    # eigendecomposition for VOpt, MC, MCVOPT criterions
+    # print("Computing/Retrieving Eigendata...")
+    # evals, evecs = G.eigen_decomp(normalization="combinatorial", k=200, method="lowrank", q=150, c=50)
+    # gamma = 0.1
+
     assert len(models) == len(acq_funcs)
     assert len(models) == len(acq_funcs_names)
 
     if args.numcores > len(models):
         args.numcores = len(models)
 
-    # # Iterations for the different tests
-    # for it in range(args.numtests):
-    #     seed = int(args.labelseed + 3*(it**2))
-    #     labeled_ind = gl.trainsets.generate(labels, rate=1, seed=seed)
-    #
-    #     RESULTS_DIR = os.path.join("results", f"{args.dataset}_results_{seed}_{args.iters}")
-    #     if not os.path.exists(RESULTS_DIR):
-    #         os.makedirs(RESULTS_DIR)
-    #
-    #     iters = args.iters
-    #     def active_learning_test(acq_func_name, acq_func, model, show_tqdm):
-    #         acc = {name : [] for name in acc_models}
-    #         # compute initial accuracies in each of the accuracy models
-    #         for name, ssl_model in acc_models.items():
-    #             pred_labels = ssl_model.fit_predict(labeled_ind, labels[labeled_ind])
-    #             acc[name].append(gl.ssl.ssl_accuracy(pred_labels, labels, labeled_ind.size))
-    #
-    #         train_ind = labeled_ind.copy()
-    #
-    #         if show_tqdm:
-    #             iterator_object = tqdm(range(iters), desc=f"{args.dataset} test {it+1}/{args.numtests}, seed = {seed}")
-    #         else:
-    #             iterator_object = range(iters)
-    #
-    #         for j in iterator_object:
-    #             if acq_func_name == "random":
-    #                 k = np.random.choice(np.delete(np.arange(G.num_nodes), train_ind))
-    #             elif acq_func_name in ["vopt", "mc", "mcvopt"]:
-    #                 u = model.fit(train_ind, labels[train_ind])
-    #                 C_a = np.linalg.inv(np.diag(evals) + evecs[train_ind,:].T @ evecs[train_ind,:] / gamma**2.) # M by M covariance matrix
-    #
-    #                 acq_func_vals = acq_func(u, C_a, evecs)
-    #             else:
-    #                 u = model.fit(train_ind, labels[train_ind])
-    #                 acq_func_vals = acq_func(u)
-    #
-    #                 # active learning query choice
-    #                 maximizer_inds = np.where(np.isclose(acq_func_vals, acq_func_vals.max()))[0]
-    #                 k = np.random.choice(maximizer_inds)
-    #
-    #             # oracle and model update
-    #             train_ind = np.append(train_ind, k)
-    #
-    #
-    #             for name, ssl_model in acc_models.items():
-    #                 pred_labels = ssl_model.fit_predict(train_ind, labels[train_ind])
-    #                 acc[name].append(gl.ssl.ssl_accuracy(pred_labels, labels, train_ind.size))
-    #
-    #         acc_df = pd.DataFrame(acc)
-    #         acc_df.to_csv(os.path.join(RESULTS_DIR, f"accs_{acq_func_name}.csv"), index=None)
-    #         np.save(os.path.join(RESULTS_DIR, f"choices_{acq_func_name}.npy"), train_ind)
-    #         return
-    #
-    #     print("------Starting Active Learning Tests-------")
-    #     # with tqdm_joblib(tqdm(desc=f"{args.dataset} test {it+1}/{args.numtests}, seed = {seed}", total=len(models))) as progress_bar:
-    #     show_bools = len(models)*[False]
-    #     show_bools[0] = True
-    #     Parallel(n_jobs=args.numcores)(delayed(active_learning_test)(acq_name, acq, mdl, show) for acq_name, acq, mdl, show \
-    #             in zip(acq_funcs_names, acq_funcs, models, show_bools))
-    #
-    #     # Consolidate results
-    #     print(f"Consolidating results to {os.path.join(RESULTS_DIR, 'accs.csv')}...")
-    #     accs_fnames = glob(os.path.join(RESULTS_DIR, "accs_*.csv")) # will NOT include accs.csv (previously consolidated file)
-    #     dfs = []
-    #     for fname in accs_fnames:
-    #         df = pd.read_csv(fname)
-    #         acq_func_name = "".join(fname.split("/")[-1].split(".")[0].split("_")[1:])
-    #         df.rename(columns=lambda name: acq_func_name + " : " + name, inplace=True)
-    #         dfs.append(df)
-    #     acc_df = pd.concat(dfs, axis=1)
-    #     acc_df.to_csv(os.path.join(RESULTS_DIR, "accs.csv"), index=None)
+    # Iterations for the different tests
+    for it in range(args.numtests):
+        seed = int(args.labelseed + 3*(it**2))
+        labeled_ind = gl.trainsets.generate(labels, rate=1, seed=seed)
+
+        RESULTS_DIR = os.path.join("results", f"{args.dataset}_results_{seed}_{args.iters}")
+        if not os.path.exists(RESULTS_DIR):
+            os.makedirs(RESULTS_DIR)
+
+        iters = args.iters
+        def active_learning_test(acq_func_name, acq_func, model, show_tqdm):
+            acc = {name : [] for name in acc_models}
+            # compute initial accuracies in each of the accuracy models
+            for name, ssl_model in acc_models.items():
+                pred_labels = ssl_model.fit_predict(labeled_ind, labels[labeled_ind])
+                acc[name].append(gl.ssl.ssl_accuracy(pred_labels, labels, labeled_ind.size))
+
+            train_ind = labeled_ind.copy()
+
+            if show_tqdm:
+                iterator_object = tqdm(range(iters), desc=f"{args.dataset} test {it+1}/{args.numtests}, seed = {seed}")
+            else:
+                iterator_object = range(iters)
+
+            for j in iterator_object:
+                if acq_func_name == "random":
+                    k = np.random.choice(np.delete(np.arange(G.num_nodes), train_ind))
+                elif acq_func_name in ["vopt", "mc", "mcvopt"]:
+                    u = model.fit(train_ind, labels[train_ind])
+                    C_a = np.linalg.inv(np.diag(evals) + evecs[train_ind,:].T @ evecs[train_ind,:] / gamma**2.) # M by M covariance matrix
+
+                    acq_func_vals = acq_func(u, C_a, evecs)
+                else:
+                    u = model.fit(train_ind, labels[train_ind])
+                    acq_func_vals = acq_func(u)
+
+                    # active learning query choice
+                    maximizer_inds = np.where(np.isclose(acq_func_vals, acq_func_vals.max()))[0]
+                    k = np.random.choice(maximizer_inds)
+
+                # oracle and model update
+                train_ind = np.append(train_ind, k)
+
+
+                for name, ssl_model in acc_models.items():
+                    pred_labels = ssl_model.fit_predict(train_ind, labels[train_ind])
+                    acc[name].append(gl.ssl.ssl_accuracy(pred_labels, labels, train_ind.size))
+
+            acc_df = pd.DataFrame(acc)
+            acc_df.to_csv(os.path.join(RESULTS_DIR, f"accs_{acq_func_name}.csv"), index=None)
+            np.save(os.path.join(RESULTS_DIR, f"choices_{acq_func_name}.npy"), train_ind)
+            return
+
+        print("------Starting Active Learning Tests-------")
+        show_bools = len(models)*[False]
+        show_bools[0] = True
+        Parallel(n_jobs=args.numcores)(delayed(active_learning_test)(acq_name, acq, mdl, show) for acq_name, acq, mdl, show \
+                in zip(acq_funcs_names, acq_funcs, models, show_bools))
+
+        # Consolidate results
+        print(f"Consolidating results to {os.path.join(RESULTS_DIR, 'accs.csv')}...")
+        accs_fnames = glob(os.path.join(RESULTS_DIR, "accs_*.csv")) # will NOT include accs.csv (previously consolidated file)
+        dfs = []
+        for fname in accs_fnames:
+            df = pd.read_csv(fname)
+            acq_func_name = "".join(fname.split("/")[-1].split(".")[0].split("_")[1:])
+            df.rename(columns=lambda name: acq_func_name + " : " + name, inplace=True)
+            dfs.append(df)
+        acc_df = pd.concat(dfs, axis=1)
+        acc_df.to_csv(os.path.join(RESULTS_DIR, "accs.csv"), index=None)
 
     # Get average and std curves over all tests
     overall_results_dir = os.path.join("results", f"{args.dataset}_results_{args.iters}")
