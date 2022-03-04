@@ -305,7 +305,7 @@ if __name__ == "__main__":
     overall_results_file = os.path.join(overall_results_dir, "stats.csv")
     print(f"Saving overall results to {overall_results_file}")
     acc_files = glob(os.path.join("results", f"{args.dataset}_results_*_{args.iters}", "accs.csv"))
-    dfs = [pd.read_csv(f) for f in acc_files]
+    dfs = [pd.read_csv(f) for f in sorted(acc_files)]
     all_columns = {}
     for col in dfs[0].columns:
         vals = np.array([df[col].values for df in dfs])
