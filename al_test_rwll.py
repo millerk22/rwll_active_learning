@@ -8,6 +8,7 @@ from argparse import ArgumentParser
 import pickle
 import os
 from glob import glob
+from scipy.special import softmax
 
 
 from joblib import Parallel, delayed
@@ -139,6 +140,25 @@ def get_poisson_weighting(G, train_ind, tau=0.0):
 def unc(u):
     u_sort = np.sort(u)
     return 1. - (u_sort[:,-1] - u_sort[:,-2]) # smallest margin acquisition function
+
+def uncsftmax(u):
+    s = softmax(u, axis=1)
+    u_sort = np.sort(s)
+    return 1. - (u_sort[:,-1] - u_sort[:,-2]) # smallest margin
+
+def trunc(u, C_a, evecs, method='mc'):
+    Cavk = C_a @ evecs
+    col_norms = np.linalg.norm(Cavk, axis=0)
+    diag_terms = (gamma**2. + np.array([np.inner(evecs[k,:], Cavk[:, i]) for i,k in enumerate(candidate_inds)]))
+
+    if method == 'vopt':
+        return col_norms**2. / diag_terms
+
+    unc_terms = unc(u)
+    if method == 'mc':
+        return unc_terms * col_norms / diag_terms
+    else:
+        return unc_terms * col_norms **2. / diag_terms
 def random(u):
     return np.random.rand(u.shape[0])
 
@@ -180,6 +200,11 @@ if __name__ == "__main__":
             G = gl.graph(W)
             G.save(graph_filename)
 
+    # eigendecomposition for VOpt, MC, MCVOPT criterions
+    print("Computing/Retrieving Eigendata...")
+    evals, evecs = G.eigen_decomp(normalization="combinatorial", k=200, method="lowrank", q=150, c=50)
+    gamma = 0.1
+
 
     ############################################
     ####### Can Change these variables #########
@@ -190,9 +215,9 @@ if __name__ == "__main__":
                  'rwll01':poisson_rw_laplace(G, tau=0.01),  # reweighted laplace learning, tau = 0.01
                  'rwll1':poisson_rw_laplace(G, tau=0.1)}   # reweighted laplace learning, tau = 0.1
 
-    acq_funcs_names = ['poisson_unc', 'rwll0_unc', 'rwll001_unc', 'rwll01_unc', 'rwll1_unc', 'random']
-    acq_funcs = [unc, unc, unc, unc, unc, random]
-    models = [acc_models['poisson'], acc_models['rwll0'], acc_models['rwll001'], acc_models['rwll01'], acc_models['rwll1'], acc_models['poisson']]
+    acq_funcs_names = ['poisson_uncsftmax']
+    acq_funcs = [uncsftmax]
+    models = [acc_models['poisson']]
 
     assert len(models) == len(acq_funcs)
     assert len(models) == len(acq_funcs_names)
@@ -209,8 +234,6 @@ if __name__ == "__main__":
         if not os.path.exists(RESULTS_DIR):
             os.makedirs(RESULTS_DIR)
 
-        all_accs = {}
-        all_choices = {}
         iters = args.iters
         def active_learning_test(acq_func_name, acq_func, model, show_tqdm):
             acc = {name : [] for name in acc_models}
@@ -229,6 +252,11 @@ if __name__ == "__main__":
             for j in iterator_object:
                 if acq_func_name == "random":
                     k = np.random.choice(np.delete(np.arange(G.num_nodes), train_ind))
+                elif acq_func_name in ["vopt", "mc", "mcvopt"]:
+                    u = model.fit(train_ind, labels[train_ind])
+                    C_a = np.linalg.inv(np.diag(evals) + evecs[train_ind,:].T @ evecs[train_ind,:] / gamma**2.) # M by M covariance matrix
+
+                    acq_func_vals = acq_func(u, C_a, evecs)
                 else:
                     u = model.fit(train_ind, labels[train_ind])
                     acq_func_vals = acq_func(u)
@@ -259,7 +287,7 @@ if __name__ == "__main__":
 
         # Consolidate results
         print(f"Consolidating results to {os.path.join(RESULTS_DIR, 'accs.csv')}...")
-        accs_fnames = glob(os.path.join(RESULTS_DIR, "*.csv"))
+        accs_fnames = glob(os.path.join(RESULTS_DIR, "accs_*.csv")) # will NOT include accs.csv (previously consolidated file)
         dfs = []
         for fname in accs_fnames:
             df = pd.read_csv(fname)
