@@ -14,15 +14,15 @@ def uncdist(u):
     '''
     Straightforward Euclidean distance to current pseudolabel
     '''
-    one_hot_predicted_labels = np.eye(u.shape[1])[np.argmax(u[candidate_inds], axis=1)]
+    one_hot_predicted_labels = np.eye(u.shape[1])[np.argmax(u, axis=1)]
     return  np.linalg.norm((u - one_hot_predicted_labels), axis=1)
 
 def uncsftmaxnorm(u):
     '''
     Project onto simplex and then Euclidean distance to current pseudolabel
     '''
-    u_probs = softmax(u[candidate_inds], axis=1)
-    one_hot_predicted_labels = np.eye(u.shape[1])[np.argmax(u[candidate_inds], axis=1)]
+    u_probs = softmax(u, axis=1)
+    one_hot_predicted_labels = np.eye(u.shape[1])[np.argmax(u, axis=1)]
     return np.linalg.norm((u_probs - one_hot_predicted_labels), axis=1)
 
 def uncnorm(u):
