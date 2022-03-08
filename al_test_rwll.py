@@ -22,7 +22,8 @@ from acquisitions import *
 
 from joblib import Parallel, delayed
 
-ACQS_MODELS = ["vopt:laplace", "uncnorm:rwll01", "uncnorm:rwll1", "uncnorm:rwll0", "mc:laplace", "mcvopt:laplace"]
+#ACQS_MODELS = ["vopt:laplace", "uncnorm:rwll01", "uncnorm:rwll1", "uncnorm:rwll0", "uncsftmax:poisson", "mc:laplace", "mcvopt:laplace"]
+ACQS_MODELS = ["uncdist:rwll0", "uncdist:rwll001", "uncdist:rwll01", "uncdist:rwll1", "uncsftmaxnorm:rwll0", "uncsftmaxnorm:rwll001", "uncsftmaxnorm:rwll01", "uncsftmaxnorm:rwll1","uncsftmaxnorm:poisson"]
 
 ACQS = {'unc': unc,
         'uncsftmax':uncsftmax,
@@ -41,7 +42,7 @@ if __name__ == "__main__":
     parser = ArgumentParser(description="Run Large Tests in Parallel of Active Learning Test for RW Laplace Learning")
     parser.add_argument("--dataset", type=str, default='mnist-evenodd')
     parser.add_argument("--metric", type=str, default='vae')
-    parser.add_argument("--numcores", type=int, default=6)
+    parser.add_argument("--numcores", type=int, default=9)
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--labelseed", type=int, default=2)
     parser.add_argument("--numtests", type=int, default=5)
@@ -52,7 +53,7 @@ if __name__ == "__main__":
 
     acq_funcs_names = [name.split(":")[0] for name in ACQS_MODELS]
     acq_funcs = [ACQS[name] for name in acq_funcs_names]
-
+    print(ACQS_MODELS)
 
     X, labels = gl.datasets.load(args.dataset.split("-")[0], metric=args.metric)
     if args.dataset.split("-")[-1] == 'evenodd':
@@ -69,7 +70,7 @@ if __name__ == "__main__":
         G = gl.graph(W)
         if np.isin(acq_funcs_names, ["mc", "vopt", "mcvopt"]).any():
             print("Computing Eigendata...")
-            evals, evecs = G.eigen_decomp(normalization="combinatorial", k=args.numeigs, method="lowrank", q=150, c=50)
+            evals, evecs = G.eigen_decomp(normalization="normalized", k=args.numeigs, method="lowrank", q=150, c=50)
         G.save(graph_filename)
 
     # while not G.isconnected():
@@ -103,7 +104,8 @@ if __name__ == "__main__":
     # eigendecomposition for VOpt, MC, MCVOPT criterions
     if np.isin(acq_funcs_names, ["mc", "vopt", "mcvopt"]).any():
         print("Retrieving Eigendata...")
-        evals, evecs = G.eigen_decomp(normalization="combinatorial", k=args.numeigs, method="lowrank", q=150, c=50)
+        evals, evecs = G.eigen_decomp(normalization="normalized", k=args.numeigs, method="lowrank", q=150, c=50)
+        G.save(graph_filename)
         evals, evecs = evals[1:], evecs[:,1:]  # we will ignore the first eigenvalue/vector
 
 
@@ -120,21 +122,22 @@ if __name__ == "__main__":
 
         iters = args.iters
 
-        def active_learning_test(acq_func_name, acq_func, model_name, model, show_tqdm):
-            # check if test already completed previously
-            acc_run_savename = os.path.join(RESULTS_DIR, f"accs_{acq_func_name}_{model_name}.csv")
+        def active_learning_test(acq_func_name, acq_func, model_name, model, show_tqdm): 
+            #check if test already completed previously
+            acc_run_savename = os.path.join(RESULTS_DIR, f"accs_{model_name}_{acq_func_name}.csv")
             if os.path.exists(acc_run_savename):
                 # check if there is an evaluation model that has not yet been evaluated for this set of choices
                 completed_df = pd.read_csv(acc_run_savename)
                 not_evaluated = [name for name in MODELS if name not in completed_df.columns]
                 if len(not_evaluated) == 0:
+                    print(f"Already completed for {acq_func_name} in {model_name}")
                     return
                 print(f"Found evaluation models that do not have recorded accuracies for {acq_func_name} in {model_name}")
                 acc = {name: [] for name in not_evaluated}
-                choices = np.load(os.path.join(RESULTS_DIR, f"choices_{acq_func_name}_{model_name}.npy"))
+                choices = np.load(os.path.join(RESULTS_DIR, f"choices_{model_name}_{acq_func_name}.npy"))
 
                 if show_tqdm:
-                    iterator_object = tqdm(range(labeled_ind.size,choices.size), desc=f"{args.dataset} test {it+1}/{args.numtests}, seed = {seed}")
+                    iterator_object = tqdm(range(labeled_ind.size,choices.size), desc=f"{args.dataset} test {it+1}/{args.numtests}, acq = {acq_func_name}:{model_name}, seed = {seed}")
                 else:
                     iterator_object = range(labeled_ind.size,choices.size)
 
@@ -159,7 +162,7 @@ if __name__ == "__main__":
             train_ind = labeled_ind.copy()
 
             if show_tqdm:
-                iterator_object = tqdm(range(iters), desc=f"{args.dataset} test {it+1}/{args.numtests}, seed = {seed}")
+                iterator_object = tqdm(range(iters), desc=f"{args.dataset} test {it+1}/{args.numtests}, acq = {acq_func_name}:{model_name}, seed = {seed}")
             else:
                 iterator_object = range(iters)
 
@@ -190,7 +193,7 @@ if __name__ == "__main__":
 
             acc_df = pd.DataFrame(acc)
             acc_df.to_csv(acc_run_savename, index=None)
-            np.save(os.path.join(RESULTS_DIR, f"choices_{acq_func_name}_{model_name}.npy"), train_ind)
+            np.save(os.path.join(RESULTS_DIR, f"choices_{model_name}_{acq_func_name}.npy"), train_ind)
             return
 
         print("------Starting Active Learning Tests-------")
