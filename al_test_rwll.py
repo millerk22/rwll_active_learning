@@ -22,7 +22,7 @@ from acquisitions import *
 
 from joblib import Parallel, delayed
 
-ACQS_MODELS = ["vopt:laplace", "uncnorm:rwll01", "uncnorm:rwll1", "uncnorm:rwll0", "uncsftmax:poisson", "mc:laplace", "mcvopt:laplace"]
+ACQS_MODELS = ["vopt:laplace"]
 # ACQS_MODELS = ["uncdist:rwll0", "uncdist:rwll001", "uncdist:rwll01", "uncdist:rwll1", "uncsftmaxnorm:rwll0", "uncsftmaxnorm:rwll001", "uncsftmaxnorm:rwll01", "uncsftmaxnorm:rwll1","uncsftmaxnorm:poisson"]
 
 ACQS = {'unc': unc,
