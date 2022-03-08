@@ -22,8 +22,8 @@ from acquisitions import *
 
 from joblib import Parallel, delayed
 
-#ACQS_MODELS = ["vopt:laplace", "uncnorm:rwll01", "uncnorm:rwll1", "uncnorm:rwll0", "uncsftmax:poisson", "mc:laplace", "mcvopt:laplace"]
-ACQS_MODELS = ["uncdist:rwll0", "uncdist:rwll001", "uncdist:rwll01", "uncdist:rwll1", "uncsftmaxnorm:rwll0", "uncsftmaxnorm:rwll001", "uncsftmaxnorm:rwll01", "uncsftmaxnorm:rwll1","uncsftmaxnorm:poisson"]
+ACQS_MODELS = ["vopt:laplace", "uncnorm:rwll01", "uncnorm:rwll1", "uncnorm:rwll0", "uncsftmax:poisson", "mc:laplace", "mcvopt:laplace"]
+# ACQS_MODELS = ["uncdist:rwll0", "uncdist:rwll001", "uncdist:rwll01", "uncdist:rwll1", "uncsftmaxnorm:rwll0", "uncsftmaxnorm:rwll001", "uncsftmaxnorm:rwll01", "uncsftmaxnorm:rwll1","uncsftmaxnorm:poisson"]
 
 ACQS = {'unc': unc,
         'uncsftmax':uncsftmax,
@@ -73,25 +73,10 @@ if __name__ == "__main__":
             evals, evecs = G.eigen_decomp(normalization="normalized", k=args.numeigs, method="lowrank", q=150, c=50)
         G.save(graph_filename)
 
-    # while not G.isconnected():
-    #     print(f"Graph not connected with knn = {knn}, using knn = {knn+10}")
-    #     knn += 10
-    #     graph_filename = os.path.join("data", f"{args.dataset}_{knn}")
-    #     try:
-    #         G = gl.graph.load(graph_filename)
-    #     except:
-    #         W = gl.weightmatrix.knn(X, knn)
-    #         G = gl.graph(W)
-    #         if np.isin(acq_funcs_names, ["mc", "vopt", "mcvopt"]).any():
-    #             print("Computing Eigendata...")
-    #             evals, evecs = G.eigen_decomp(normalization="combinatorial", k=args.numeigs, method="lowrank", q=150, c=50)
-    #         G.save(graph_filename)
-
     MODELS = {'poisson':gl.ssl.poisson(G),  # poisson learning
                 'laplace':gl.ssl.laplace(G), # laplace learning (no reweighting)
                 'rwll0':gl.ssl.laplace(G, reweighting='poisson'),  # reweighted laplace learning, tau = 0
-                'rwll001':poisson_rw_laplace(G, tau=0.001),  # reweighted laplace learning, tau = 0.001
-                 'rwll01':poisson_rw_laplace(G, tau=0.01),  # reweighted laplace learning, tau = 0.01
+                'rwll01':poisson_rw_laplace(G, tau=0.01),  # reweighted laplace learning, tau = 0.01
                  'rwll1':poisson_rw_laplace(G, tau=0.1)}   # reweighted laplace learning, tau = 0.1
 
     model_names = [name.split(":")[1] for name in ACQS_MODELS]
@@ -122,7 +107,7 @@ if __name__ == "__main__":
 
         iters = args.iters
 
-        def active_learning_test(acq_func_name, acq_func, model_name, model, show_tqdm): 
+        def active_learning_test(acq_func_name, acq_func, model_name, model, show_tqdm):
             #check if test already completed previously
             acc_run_savename = os.path.join(RESULTS_DIR, f"accs_{model_name}_{acq_func_name}.csv")
             if os.path.exists(acc_run_savename):
@@ -167,21 +152,23 @@ if __name__ == "__main__":
                 iterator_object = range(iters)
 
             for j in iterator_object:
+                candidate_set = np.delete(np.arange(G.num_nodes), train_ind)
                 if acq_func_name == "random":
-                    k = np.random.choice(np.delete(np.arange(G.num_nodes), train_ind))
+                    k = np.random.choice(candidate_set)
                 elif acq_func_name in ["vopt", "mc", "mcvopt"]:
                     u = model.fit(train_ind, labels[train_ind])
                     C_a = np.linalg.inv(np.diag(evals) + evecs[train_ind,:].T @ evecs[train_ind,:] / args.gamma**2.)
                     acq_func_vals = acq_func(u, C_a, evecs, gamma=args.gamma)
+                    acq_func_vals = acq_func_vals[candidate_set]
                     maximizer_inds = np.where(np.isclose(acq_func_vals, acq_func_vals.max()))[0]
-                    k = np.random.choice(maximizer_inds)
+                    k = candidate_set[np.random.choice(maximizer_inds)]
                 else:
                     u = model.fit(train_ind, labels[train_ind])
                     acq_func_vals = acq_func(u)
-
+                    acq_func_vals = acq_func_vals[candidate_set]
                     # active learning query choice
                     maximizer_inds = np.where(np.isclose(acq_func_vals, acq_func_vals.max()))[0]
-                    k = np.random.choice(maximizer_inds)
+                    k = candidate_set[np.random.choice(maximizer_inds)]
 
                 # oracle and model update
                 train_ind = np.append(train_ind, k)
