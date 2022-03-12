@@ -7,8 +7,7 @@ def get_poisson_weighting(G, train_ind, tau=0.0):
     n = G.num_nodes
     F = np.zeros(n)
     F[train_ind] = 1
-    if tau == 0.0:
-        F -= np.mean(F)
+    F -= np.mean(F)
 
 
     L = G.laplacian()
@@ -16,8 +15,7 @@ def get_poisson_weighting(G, train_ind, tau=0.0):
         L += tau*sparse.eye(L.shape[0])
 
     w = gl.utils.conjgrad(L, F, tol=1e-5)
-    if tau == 0.0:
-        w -= np.min(w, axis=0)
+    w -= np.min(w, axis=0)
 
     return w
 
