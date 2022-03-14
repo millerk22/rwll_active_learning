@@ -135,7 +135,7 @@ model = VAE(layer_widths).to(device)
 # print(f"Save pytorch model torch_models/vae_{epochs}.pt")
 # torch.save(model.state_dict(), os.path.join("torch_models", f"{epochs}", f"vae_{epochs}.pt"))
 
-model.load_state_dict(os.path.join("torch_models", f"{epochs}", f"vae_{epochs}.pt"))
+model.load_state_dict(torch.load(os.path.join("torch_models", f"{epochs}", f"vae_{epochs}.pt")))
 model.eval()
 
 print("Pushing through representations...")
