@@ -163,7 +163,7 @@ except:
             print(mu.shape)
             batch_data_vae = mu.cpu().numpy()
             print(f"Done with batch {batch_idx}")
-            np.savez(os.path.join("torch_models", f"{epochs}", f"emnist_vae_{epochs}.npz", data=batch_data_vae, labels=batch_labels)
+            np.savez(os.path.join("torch_models", f"{epochs}", f"emnist_vae_{epochs}.npz"), data=batch_data_vae, labels=batch_labels)
 
 
     fnames = sorted(glob(f"torch_models/{epochs}/emnist_vae_*.npz"))
@@ -175,7 +175,7 @@ except:
             X, y = np.concatenate((X, batch_data['data']), axis=0), np.concatenate((y, batch_data['labels']))
 
     np.savez(f"torch_models/{epochs}/emnist_vae.npz", data=X, labels=y)
-    print("Done!")
+    print("Done! saved to torch_models/1000/emnist_vae.npz")
 
 """
 print("Constructing similarity graphs")
