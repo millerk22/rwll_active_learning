@@ -123,44 +123,51 @@ data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, **kwargs)
 
 #Put model on GPU and set up optimizer
 model = VAE(layer_widths).to(device)
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+# optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+#
+# #Training epochs
+# for epoch in range(1, epochs + 1):
+#     train(epoch)
 
-#Training epochs
-for epoch in range(1, epochs + 1):
-    train(epoch)
 
+# if not os.path.exists(os.path.join("torch_models", f"{epochs}")):
+#     os.makedirs(os.path.join("torch_models", f"{epochs}"))
+# print(f"Save pytorch model torch_models/vae_{epochs}.pt")
+# torch.save(model.state_dict(), os.path.join("torch_models", f"{epochs}", f"vae_{epochs}.pt"))
 
-if not os.path.exists(os.path.join("torch_models", f"{epochs}")):
-    os.makedirs(os.path.join("torch_models", f"{epochs}"))
-print(f"Save pytorch model torch_models/vae_{epochs}.pt")
-torch.save(model.state_dict(), os.path.join("torch_models", f"{epochs}", f"vae_{epochs}.pt"))
-
+model.load_state_dict(os.path.join("torch_models", f"{epochs}", f"vae_{epochs}.pt"))
+model.eval()
 
 print("Pushing through representations...")
 N = dataset.data.shape[0]
-data_loader = DataLoader(dataset, batch_size=N//10, shuffle=False, **kwargs)
+data_loader = DataLoader(dataset, batch_size=N, shuffle=False, **kwargs)
 
 #Encode the dataset and save to npz file
 with torch.no_grad():
-    for batch_idx, (batch_data, batch_labels) in enumerate(data_loader):
-        mu, logvar = model.encode(batch_data.to(device).view(-1, layer_widths[0]))
-        batch_data_vae = mu.cpu().numpy()
-        np.savez(f"torch_models/{epochs}/emnist_vae_{batch_idx}.npz", data=batch_data_vae, labels=batch_labels.cpu().numpy())
-        print(f"Done with batch {batch_idx}")
+    mu, logvar = model.encode(data.to(device).view(-1, layer_widths[0]))
+    print(data.shape)
+    print(mu.shape)
 
-fnames = sorted(glob(f"torch_models/{epochs}/emnist_vae_*.npz"))
-for i, fname in enumerate(fnames):
-    batch_data = np.load(fname)
-    if i == 0:
-        X, y = batch_data['data'], batch_data['labels']
-    else:
-        X, y = np.concatenate((X, batch_data['data']), axis=0), np.concatenate((y, batch_data['labels']))
-
-np.savez(f"torch_models/{epochs}/emnist_vae.npz", data=X, labels=y)
-print("Done!")
+    # for batch_idx, (batch_data, batch_labels) in enumerate(data_loader):
+    #     print(batch_data.shape)
+    #     batch_data_vae = mu.cpu().numpy()
+    #     print(f"Done with batch {batch_idx}")
 
 
-# gl.datasets.save(data_vae, labels, "emnist", metric="vae", overwrite=False)
+# fnames = sorted(glob(f"torch_models/{epochs}/emnist_vae_*.npz"))
+# for i, fname in enumerate(fnames):
+#     batch_data = np.load(fname)
+#     if i == 0:
+#         X, y = batch_data['data'], batch_data['labels']
+#     else:
+#         X, y = np.concatenate((X, batch_data['data']), axis=0), np.concatenate((y, batch_data['labels']))
+#
+# np.savez(f"torch_models/{epochs}/emnist_vae.npz", data=X, labels=y)
+# print("Done!")
+
+print("saving")
+np.savez(f"torch_models/{epochs}/emnist_vae.npz", data=mu.cpu().numpy(), labels=target.cpu().numpy())
+# gl.datasets.save(data_vae, target, "emnist", metric="vae", overwrite=True)
 #
 # print("Constructing similarity graphs")
 # W_raw = gl.weightmatrix.knn(data, 20)
