@@ -9,6 +9,8 @@ from torch.nn import functional as F
 from torchvision import datasets, transforms
 from torchvision.utils import save_image
 
+from glob import glob
+
 class MyDataset(Dataset):
     def __init__(self, data, targets, transform=None):
         self.data = data
@@ -128,10 +130,10 @@ for epoch in range(1, epochs + 1):
     train(epoch)
 
 
-if not os.path.exists("torch_models"):
-    os.makedirs("torch_models")
+if not os.path.exists(os.path.join("torch_models", f"{epochs}")):
+    os.makedirs(os.path.join("torch_models", f"{epochs}"))
 print(f"Save pytorch model torch_models/vae_{epochs}.pt")
-torch.save(model.state_dict(), os.path.join("torch_models", f"vae_{epochs}.pt"))
+torch.save(model.state_dict(), os.path.join("torch_models", f"{epochs}", f"vae_{epochs}.pt"))
 
 
 print("Pushing through representations...")
@@ -143,9 +145,19 @@ with torch.no_grad():
     for batch_idx, (batch_data, batch_labels) in enumerate(data_loader):
         mu, logvar = model.encode(batch_data.to(device).view(-1, layer_widths[0]))
         batch_data_vae = mu.cpu().numpy()
-        np.savez(f"emnist_vae_{batch_idx}.npz", data=batch_data_vae, labels=batch_labels.cpu().numpy())
+        np.savez(f"torch_models/{epochs}/emnist_vae_{batch_idx}.npz", data=batch_data_vae, labels=batch_labels.cpu().numpy())
         print(f"Done with batch {batch_idx}")
 
+fnames = sorted(glob(f"torch_models/{epochs}/emnist_vae_*.npz"))
+for i, fname in enumerate(fnames):
+    batch_data = np.load(fname)
+    if i == 0:
+        X, y = batch_data['data'], batch_data['labels']
+    else:
+        X, y = np.concatenate((X, batch_data['data']), axis=0), np.concatenate((y, batch_data['labels']))
+
+np.savez(f"torch_models/{epochs}/emnist_vae.npz", data=X, labels=y)
+print("Done!")
 
 
 # gl.datasets.save(data_vae, labels, "emnist", metric="vae", overwrite=False)
