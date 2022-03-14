@@ -95,7 +95,7 @@ def train(epoch):
 layer_widths=[400,20]
 no_cuda=False
 batch_size=128
-epochs=2
+epochs=1000
 learning_rate=1e-3
 
 

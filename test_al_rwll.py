@@ -49,7 +49,7 @@ if __name__ == "__main__":
     parser.add_argument("--metric", type=str, default='vae')
     parser.add_argument("--numcores", type=int, default=9)
     parser.add_argument("--iters", type=int, default=100)
-    parser.add_argument("--labelseed", type=int, default=2)
+    parser.add_argument("--labelseed", type=int, default=3)
     parser.add_argument("--numtests", type=int, default=5)
     parser.add_argument("--numeigs", type=int, default=200)
     parser.add_argument("--gamma", type=float, default=0.1)
