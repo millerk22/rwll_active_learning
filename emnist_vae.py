@@ -101,6 +101,10 @@ learning_rate=1e-3
 
 
 data, labels = gl.datasets.load("emnist", metric="raw")
+if len(data.shape) > 2:
+    data = data.reshape(data.shape[0], -1)
+    print(data.shape)
+    gl.datasets.save(data, labels, dataset="emnist", metric='raw', overwrite=True)
 print("Training VAE....")
 
 
@@ -123,71 +127,76 @@ data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, **kwargs)
 
 #Put model on GPU and set up optimizer
 model = VAE(layer_widths).to(device)
-# optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-#
-# #Training epochs
-# for epoch in range(1, epochs + 1):
-#     train(epoch)
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+#Training epochs
+for epoch in range(1, epochs + 1):
+    train(epoch)
 
 
-# if not os.path.exists(os.path.join("torch_models", f"{epochs}")):
-#     os.makedirs(os.path.join("torch_models", f"{epochs}"))
-# print(f"Save pytorch model torch_models/vae_{epochs}.pt")
-# torch.save(model.state_dict(), os.path.join("torch_models", f"{epochs}", f"vae_{epochs}.pt"))
+if not os.path.exists(os.path.join("torch_models", f"{epochs}")):
+    os.makedirs(os.path.join("torch_models", f"{epochs}"))
+print(f"Save pytorch model torch_models/vae_{epochs}.pt")
+torch.save(model.state_dict(), os.path.join("torch_models", f"{epochs}", f"vae_{epochs}.pt"))
 
 model.load_state_dict(torch.load(os.path.join("torch_models", f"{epochs}", f"vae_{epochs}.pt")))
 model.eval()
 
 print("Pushing through representations...")
 N = dataset.data.shape[0]
-data_loader = DataLoader(dataset, batch_size=N//5, shuffle=False, **kwargs)
-
-#Encode the dataset and save to npz file
-with torch.no_grad():
 
 
-    for batch_idx, (batch_data, batch_labels) in enumerate(data_loader):
-        print(batch_data.shape)
-        mu, logvar = model.encode(batch_data.to(device).view(-1, layer_widths[0]))
-        print(mu.shape)
-        batch_data_vae = mu.cpu().numpy()
-        print(f"Done with batch {batch_idx}")
-        # np.savez(os.path.join("torch_models", f"{epochs}", f"emnist_vae_{epochs}.npz", data=batch_data_vae, labels=batch_labels)
+try:
+    with torch.no_grad():
+        mu, logvar = model.encode(data.to(device).view(-1, layer_widths[0]))
+        gl.dataset.save(mu.cpu().numpy(), labels, dataset="emnist", overwrite=True)
+except:
+    print("Full push through did not work")
+    data_loader = DataLoader(dataset, batch_size=N//5, shuffle=False, **kwargs)
+    #Encode the dataset and save to npz file
+    with torch.no_grad():
 
 
-# fnames = sorted(glob(f"torch_models/{epochs}/emnist_vae_*.npz"))
-# for i, fname in enumerate(fnames):
-#     batch_data = np.load(fname)
-#     if i == 0:
-#         X, y = batch_data['data'], batch_data['labels']
-#     else:
-#         X, y = np.concatenate((X, batch_data['data']), axis=0), np.concatenate((y, batch_data['labels']))
-#
-# np.savez(f"torch_models/{epochs}/emnist_vae.npz", data=X, labels=y)
-# print("Done!")
+        for batch_idx, (batch_data, batch_labels) in enumerate(data_loader):
+            print(batch_data.shape)
+            mu, logvar = model.encode(batch_data.to(device).view(-1, layer_widths[0]))
+            print(mu.shape)
+            batch_data_vae = mu.cpu().numpy()
+            print(f"Done with batch {batch_idx}")
+            np.savez(os.path.join("torch_models", f"{epochs}", f"emnist_vae_{epochs}.npz", data=batch_data_vae, labels=batch_labels)
 
-# print("saving")
-# np.savez(f"torch_models/{epochs}/emnist_vae.npz", data=mu.cpu().numpy(), labels=target.cpu().numpy())
-# gl.datasets.save(data_vae, target, "emnist", metric="vae", overwrite=True)
-#
-# print("Constructing similarity graphs")
-# W_raw = gl.weightmatrix.knn(data, 20)
-# W_vae = gl.weightmatrix.knn(data_vae, 20)
-#
-# G_raw = gl.graph(W_raw)
-# print(f"raw graph connected = {G_raw.isconnected()}")
-# G_vae = gl.graph(W_vae)
-# print(f"vae graph connected = {G_vae.isconnected()}")
-#
-# num_train_per_class = 1
-# train_ind = gl.trainsets.generate(labels, rate=num_train_per_class)
-# train_labels = labels[train_ind]
-#
-# pred_labels_raw = gl.ssl.poisson(W_raw).fit_predict(train_ind,train_labels)
-# pred_labels_vae = gl.ssl.poisson(W_vae).fit_predict(train_ind,train_labels)
-#
-# accuracy_raw = gl.ssl.ssl_accuracy(labels,pred_labels_raw,len(train_ind))
-# accuracy_vae = gl.ssl.ssl_accuracy(labels,pred_labels_vae,len(train_ind))
-#
-# print('Raw Accuracy: %.2f%%'%accuracy_raw)
-# print('VAE Accuracy: %.2f%%'%accuracy_vae)
+
+    fnames = sorted(glob(f"torch_models/{epochs}/emnist_vae_*.npz"))
+    for i, fname in enumerate(fnames):
+        batch_data = np.load(fname)
+        if i == 0:
+            X, y = batch_data['data'], batch_data['labels']
+        else:
+            X, y = np.concatenate((X, batch_data['data']), axis=0), np.concatenate((y, batch_data['labels']))
+
+    np.savez(f"torch_models/{epochs}/emnist_vae.npz", data=X, labels=y)
+    print("Done!")
+
+"""
+print("Constructing similarity graphs")
+W_raw = gl.weightmatrix.knn(data, 20)
+W_vae = gl.weightmatrix.knn(data_vae, 20)
+
+G_raw = gl.graph(W_raw)
+print(f"raw graph connected = {G_raw.isconnected()}")
+G_vae = gl.graph(W_vae)
+print(f"vae graph connected = {G_vae.isconnected()}")
+
+num_train_per_class = 1
+train_ind = gl.trainsets.generate(labels, rate=num_train_per_class)
+train_labels = labels[train_ind]
+
+pred_labels_raw = gl.ssl.poisson(W_raw).fit_predict(train_ind,train_labels)
+pred_labels_vae = gl.ssl.poisson(W_vae).fit_predict(train_ind,train_labels)
+
+accuracy_raw = gl.ssl.ssl_accuracy(labels,pred_labels_raw,len(train_ind))
+accuracy_vae = gl.ssl.ssl_accuracy(labels,pred_labels_vae,len(train_ind))
+
+print('Raw Accuracy: %.2f%%'%accuracy_raw)
+print('VAE Accuracy: %.2f%%'%accuracy_vae)
+"""
