@@ -140,18 +140,19 @@ model.eval()
 
 print("Pushing through representations...")
 N = dataset.data.shape[0]
-data_loader = DataLoader(dataset, batch_size=N, shuffle=False, **kwargs)
+data_loader = DataLoader(dataset, batch_size=N//5, shuffle=False, **kwargs)
 
 #Encode the dataset and save to npz file
 with torch.no_grad():
-    mu, logvar = model.encode(data.to(device).view(-1, layer_widths[0]))
-    print(data.shape)
-    print(mu.shape)
 
-    # for batch_idx, (batch_data, batch_labels) in enumerate(data_loader):
-    #     print(batch_data.shape)
-    #     batch_data_vae = mu.cpu().numpy()
-    #     print(f"Done with batch {batch_idx}")
+
+    for batch_idx, (batch_data, batch_labels) in enumerate(data_loader):
+        print(batch_data.shape)
+        mu, logvar = model.encode(batch_data.to(device).view(-1, layer_widths[0]))
+        print(mu.shape)
+        batch_data_vae = mu.cpu().numpy()
+        print(f"Done with batch {batch_idx}")
+        # np.savez(os.path.join("torch_models", f"{epochs}", f"emnist_vae_{epochs}.npz", data=batch_data_vae, labels=batch_labels)
 
 
 # fnames = sorted(glob(f"torch_models/{epochs}/emnist_vae_*.npz"))
@@ -165,8 +166,8 @@ with torch.no_grad():
 # np.savez(f"torch_models/{epochs}/emnist_vae.npz", data=X, labels=y)
 # print("Done!")
 
-print("saving")
-np.savez(f"torch_models/{epochs}/emnist_vae.npz", data=mu.cpu().numpy(), labels=target.cpu().numpy())
+# print("saving")
+# np.savez(f"torch_models/{epochs}/emnist_vae.npz", data=mu.cpu().numpy(), labels=target.cpu().numpy())
 # gl.datasets.save(data_vae, target, "emnist", metric="vae", overwrite=True)
 #
 # print("Constructing similarity graphs")
