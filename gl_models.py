@@ -1,7 +1,20 @@
 import numpy as np
 import graphlearning as gl
 import scipy.sparse as sparse
+from copy import deepcopy
 
+
+
+def get_models(G, model_names):
+    MODELS = {'poisson':gl.ssl.poisson(G),  # poisson learning
+               'laplace':gl.ssl.laplace(G), # laplace learning
+               'mbo':gl.ssl.multiclass_mbo(G),
+               'rwll0':gl.ssl.laplace(G, reweighting='poisson'), # reweighted laplace
+               'rwll001':poisson_rw_laplace(G, tau=0.001),
+               'rwll01':poisson_rw_laplace(G, tau=0.01),
+              'rwll1':poisson_rw_laplace(G, tau=0.1)}
+
+    return [deepcopy(MODELS[name]) for name in model_names]
 
 def get_poisson_weighting(G, train_ind, tau=0.0):
     n = G.num_nodes
@@ -19,7 +32,7 @@ def get_poisson_weighting(G, train_ind, tau=0.0):
 
     return w
 
-    
+
 class poisson_rw_laplace(gl.ssl.ssl):
     def __init__(self, W=None, class_priors=None, tau=0.0, normalization='combinatorial', tol=1e-5, alpha=2, zeta=1e7, r=0.1):
         """Laplace Learning

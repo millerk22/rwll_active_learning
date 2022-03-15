@@ -7,81 +7,42 @@ from tqdm import tqdm
 from argparse import ArgumentParser
 import pickle
 import os
+import yaml
 from copy import deepcopy
 from glob import glob
 from scipy.special import softmax
 from functools import reduce
-from gl_models import * 
-from acquisitions import *
-
+from gl_models import get_models
+from utils import *
+from acquisitions import ACQS
 
 from joblib import Parallel, delayed
-
-ACQS = {'unc': unc,
-        'uncsftmax':uncsftmax,
-        'uncdist':uncdist,
-        'uncsftmaxnorm':uncsftmaxnorm,
-        'uncnorm':uncnorm,
-        'vopt':vopt,
-        'mc':mc,
-        'mcvopt':mcvopt,
-        'random':random,
-        'betavar':beta_var}
-
-
-
-
 
 
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Compute Accuracies in Parallel of Active Learning Tests for RWLL Learning")
-    parser.add_argument("--dataset", type=str, default='mnist-evenodd')
+    parser.add_argument("--dataset", type=str, default='mstar-evenodd')
     parser.add_argument("--metric", type=str, default='vae')
     parser.add_argument("--numcores", type=int, default=9)
+    parser.add_argument("--config", type=str, default="./config.yaml")
     parser.add_argument("--iters", type=int, default=100)
     args = parser.parse_args()
 
+    # load in configuration file
+    with open(args.config, 'r') as f:
+        config = yaml.safe_load(f)
 
-    X, labels = gl.datasets.load(args.dataset.split("-")[0], metric=args.metric)
-    if args.dataset.split("-")[-1] == 'evenodd':
-        labels = labels % 2
-
-    nc = np.unique(labels).size
-
-    if args.dataset.split("-")[0] == 'mstar': # allows for specific train/test set split TODO
-        trainset = None
-    else:
-        trainset = None
-
-    # Construct the similarity graph
-    print(f"Constructing similarity graph for {args.dataset}")
-    knn = 20
-    graph_filename = os.path.join("data", f"{args.dataset.split('-')[0]}_{knn}")
-    try:
-        G = gl.graph.load(graph_filename)
-    except:
-        W = gl.weightmatrix.knn(X, knn)
-        G = gl.graph(W)
-        if np.isin(acq_funcs_names, ["mc", "vopt", "mcvopt"]).any():
-            print("Computing Eigendata...")
-            evals, evecs = G.eigen_decomp(normalization="combinatorial", k=args.numeigs, method="lowrank", q=150, c=50)
-        G.save(graph_filename)
-
-    MODELS = {'poisson':gl.ssl.poisson(G),  # poisson learning
-               'laplace':gl.ssl.laplace(G), # laplace learning
-               'rwll0':gl.ssl.laplace(G, reweighting='poisson'), # reweighted laplace 
-               'rwll001':poisson_rw_laplace(G, tau=0.001),
-               'rwll01':poisson_rw_laplace(G, tau=0.01),
-              'rwll1':poisson_rw_laplace(G, tau=0.1)}
-
-
+    G, labels, trainset = load_graph(args.dataset, args.metric, numeigs=None) # don't compute any eigenvalues if can't find
+    model_names = config["acc_models"]
+    models = get_models(G, model_names)
+    models_dict = {name:model for name, model in zip(model_names, models)}
     results_directories = glob(os.path.join("results", f"{args.dataset}_results_*_{args.iters}/"))
 
     for out_num, RESULTS_DIR in enumerate(results_directories):
         choices_fnames = glob(os.path.join(RESULTS_DIR, "choices_*.npy"))
         labeled_ind = np.load(os.path.join(RESULTS_DIR, "init_labeled.npy")) # initially labeled points that are common to all acq_func:gbssl modelname pairs
-        for num, acc_model_name in enumerate(MODELS.keys()):
+        for num, acc_model_name in enumerate(models_dict.keys()):
             acc_dir = os.path.join(RESULTS_DIR, acc_model_name)
             if not os.path.exists(acc_dir):
                 os.makedirs(acc_dir)
@@ -90,10 +51,10 @@ if __name__ == "__main__":
                 # get acquisition function - gbssl modelname that made this sequence of choices
                 acq_func_name, modelname = choices_fname.split("_")[-2:]
                 modelname = modelname.split(".")[0]
-                
+
                 # load in the indices of the choices
                 choices = np.load(choices_fname)
-                
+
                 # define the filepath of where the results of evaluating this acq_func:modelname combo had in acc_model_name
                 acc_fname = os.path.join(acc_dir, f"acc_{acq_func_name}_{modelname}.npy")
                 if os.path.exists(acc_fname):
@@ -101,26 +62,26 @@ if __name__ == "__main__":
                     return
 
                 # get copy of model on this cpu
-                model = deepcopy(MODELS[acc_model_name])
-                
+                model = deepcopy(models_dict[acc_model_name])
+
                 # define iterator to have same number of accuracy evaluations as those already done
                 if show_tqdm:
                     iterator_object = tqdm(range(labeled_ind.size,choices.size+1), desc=f"Computing Acc of {acq_func_name}-{modelname}")
                 else:
                     iterator_object = range(labeled_ind.size,choices.size+1)
-                
+
                 # Compute accuracies at each sequential subset of choices
                 acc = np.array([])
                 for j in iterator_object:
                     train_ind = choices[:j]
                     u = model.fit(train_ind, labels[train_ind])
                     acc = np.append(acc, gl.ssl.ssl_accuracy(model.predict(), labels, train_ind.size))
-                
+
                 # save accuracy results to corresponding filename
                 np.save(acc_fname, acc)
                 return
 
-            print(f"-------- Computing Accuracies in {acc_model_name}, {num+1}/{len(MODELS)} in {RESULTS_DIR} ({out_num+1}/{len(results_directories)}) -------")
+            print(f"-------- Computing Accuracies in {acc_model_name}, {num+1}/{len(models_dict)} in {RESULTS_DIR} ({out_num+1}/{len(results_directories)}) -------")
             # show_bools is for tqdm iterator to track progress of some
             show_bools = np.zeros(len(choices_fnames), dtype=bool)
             show_bools[::args.numcores] = True
@@ -131,7 +92,7 @@ if __name__ == "__main__":
 
         # Consolidate results
         print(f"Consolidating accuracy results of run in: {os.path.join(RESULTS_DIR)}...")
-        for acc_model_name in MODELS.keys():
+        for acc_model_name in models_dict.keys():
             acc_dir = os.path.join(RESULTS_DIR, acc_model_name)
             accs_fnames = glob(os.path.join(acc_dir, "acc_*.npy"))
             columns = {}
@@ -140,7 +101,7 @@ if __name__ == "__main__":
                 acq_func_name, modelname = fname.split("_")[-2:]
                 modelname = modelname.split(".")[0]
                 columns[acq_func_name + " : " + modelname] = acc
-            
+
             acc_df = pd.DataFrame(columns)
             acc_df.to_csv(os.path.join(acc_dir, "accs.csv"), index=None)
 

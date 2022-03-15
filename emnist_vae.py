@@ -149,7 +149,7 @@ N = dataset.data.shape[0]
 try:
     with torch.no_grad():
         mu, logvar = model.encode(data.to(device).view(-1, layer_widths[0]))
-        gl.dataset.save(mu.cpu().numpy(), labels, dataset="emnist", overwrite=True)
+        gl.dataset.save(mu.cpu().numpy(), target, dataset="emnist", overwrite=True)
 except:
     print("Full push through did not work")
     data_loader = DataLoader(dataset, batch_size=N//5, shuffle=False, **kwargs)
