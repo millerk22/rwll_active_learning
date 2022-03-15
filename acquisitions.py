@@ -12,7 +12,7 @@ class uncsftmax(acquisition_function):
     def compute_values(active_learning, u):
         s = softmax(u, axis=1)
         u_sort = np.sort(s)
-        return 1. - (u_sort[:,-1] - u_sort[:,-2]) # smallest margin
+        return 1. - (u_sort[active_learning.candidate_inds,-1] - u_sort[active_learning.candidate_inds,-2]) # smallest margin
 
 class uncdist(acquisition_function):
     '''
@@ -20,7 +20,7 @@ class uncdist(acquisition_function):
     '''
     def compute_values(active_learning, u):
         one_hot_predicted_labels = np.eye(u.shape[1])[np.argmax(u, axis=1)]
-        return  np.linalg.norm((u - one_hot_predicted_labels), axis=1)
+        return  np.linalg.norm((u - one_hot_predicted_labels), axis=1)[active_learning.candidate_inds]
 
 
 class uncnorm(acquisition_function):
@@ -28,7 +28,7 @@ class uncnorm(acquisition_function):
     Norm of the output rows in u.
     '''
     def compute_values(active_learning, u):
-        return 1. - np.linalg.norm(u, axis=1)
+        return 1. - np.linalg.norm(u[active_learning.candidate_inds], axis=1)
 
 
 class betavar(acquisition_function):
@@ -40,14 +40,14 @@ class betavar(acquisition_function):
     def compute_values(active_learning, u):
         a0 = u.sum(axis=1)
         a = (u * u).sum(axis=1)
-        return ((1. - a/(a0**2.))/(1. + a0))
+        return ((1. - a/(a0**2.))/(1. + a0))[active_learning.candidate_inds]
 
 class random(acquisition_function):
     '''
     Random choices
     '''
     def compute_values(active_learning, u):
-        return np.random.rand(u.shape[0])
+        return np.random.rand(u.shape[0])[active_learning.candidate_inds]
 
 
 ACQS = {'unc': uncertainty_sampling(),
