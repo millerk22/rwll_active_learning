@@ -22,8 +22,6 @@ from joblib import Parallel, delayed
 
 
 
-
-
 if __name__ == "__main__":
     parser = ArgumentParser(description="Run Large Tests in Parallel of Active Learning Test for RW Laplace Learning")
     parser.add_argument("--dataset", type=str, default='mstar-evenodd')
@@ -31,7 +29,6 @@ if __name__ == "__main__":
     parser.add_argument("--numcores", type=int, default=9)
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--labelseed", type=int, default=3)
-    parser.add_argument("--numeigs", type=int, default=200)
     parser.add_argument("--gamma", type=float, default=0.1)
     parser.add_argument("--config", type=str, default="./config.yaml")
     args = parser.parse_args()
@@ -39,21 +36,35 @@ if __name__ == "__main__":
     # load in configuration file
     with open(args.config, 'r') as f:
         config = yaml.safe_load(f)
-
-    # Load in the graph and labels
-    G, labels, trainset = load_graph(args.dataset, args.metric, args.numeigs)
-
+    
+    
     # Define ssl models and acquisition functions from configuration file
     ACQS_MODELS = config["acqs_models"]
     acq_funcs_names = [name.split(" ")[0] for name in ACQS_MODELS]
-    acq_funcs = [ACQS[name] for name in acq_funcs_names]
+    acq_funcs = [ACQS[name.split("-")[0]] for name in acq_funcs_names]
     model_names = [name.split(" ")[1] for name in ACQS_MODELS]
+    
+    # Determine if we need to calculate more eigenvectors/values for mc, vopt, mcvopt acquisitions
+    maxnumeigs = 0
+    for acq_func_name in acq_funcs_names:
+        d = acq_func_name.split("-")[-1]
+        if len(d) > 0:
+            if maxnumeigs < int(d):
+                maxnumeigs = int(d)
+    if maxnumeigs == 0:
+        maxnumeigs = None
+    
+    # Load in the graph and labels
+    print("Loading in Graph...")
+    G, labels, trainset, normalization = load_graph(args.dataset, args.metric, maxnumeigs)
     models = get_models(G, model_names)
-
+    
+    
     # use only enough cores as length of models
     if args.numcores > len(models):
         args.numcores = len(models)
-
+    
+    
     # define the seed set for the iterations. Allows for defining in the configuration file
     try:
         seeds = config["seeds"]
@@ -86,9 +97,9 @@ if __name__ == "__main__":
 
             # based on the acquisition function name, determine if need to compute the covariance matrix for instantiating
             # active_learner object
-            if acq_func_name in ["mc", "mcvopt", "vopt"]:
-                active_learner = gl.active_learning.active_learning(deepcopy(G), labeled_ind.copy(), labels[labeled_ind], \
-                                eval_cutoff=args.numeigs, gamma=args.gamma)
+            if acq_func_name.split("-")[0] in ["mc", "mcvopt", "vopt"]:
+                active_learner = get_active_learner_eig(deepcopy(G), labeled_ind.copy(), labels, acq_func_name, gamma=args.gamma, normalization=normalization)
+                
             else:
                 active_learner = gl.active_learning.active_learning(deepcopy(G), labeled_ind.copy(), labels[labeled_ind], eval_cutoff=None)
 

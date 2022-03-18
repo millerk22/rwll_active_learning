@@ -33,7 +33,7 @@ if __name__ == "__main__":
     with open(args.config, 'r') as f:
         config = yaml.safe_load(f)
 
-    G, labels, trainset = load_graph(args.dataset, args.metric, numeigs=None) # don't compute any eigenvalues if can't find
+    G, labels, trainset, normalization = load_graph(args.dataset, args.metric, numeigs=None) # don't compute any eigenvalues 
     model_names = config["acc_models"]
     models = get_models(G, model_names)
     models_dict = {name:model for name, model in zip(model_names, models)}
@@ -58,7 +58,7 @@ if __name__ == "__main__":
                 # define the filepath of where the results of evaluating this acq_func:modelname combo had in acc_model_name
                 acc_fname = os.path.join(acc_dir, f"acc_{acq_func_name}_{modelname}.npy")
                 if os.path.exists(acc_fname):
-                    print(f"already completed {acc_fname}")
+                    print(f"Already computed accuracies in {acc_model_name} for {acc_fname}")
                     return
 
                 # get copy of model on this cpu

@@ -49,7 +49,6 @@ class random(acquisition_function):
     def compute_values(self, active_learning, u):
         return np.random.rand(u.shape[0])[active_learning.candidate_inds]
 
-
 ACQS = {'unc': uncertainty_sampling(),
         'uncsftmax':uncsftmax(),
         'uncdist':uncdist(),
@@ -60,3 +59,5 @@ ACQS = {'unc': uncertainty_sampling(),
         'mcvopt':model_change_vopt(),
         'random':random(),
         'betavar':betavar()}
+    
+
