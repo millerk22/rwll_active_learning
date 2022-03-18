@@ -41,10 +41,10 @@ def load_graph(dataset, metric, numeigs=200, data_dir="data"):
             print("Retrieving Eigendata...")
         else:
             print(f"Requested {numeigs} eigenvalues, but have only {prev_numeigs} stored. Recomputing Eigendata...")
-   
+
         evals, evecs = G.eigen_decomp(normalization=normalization, k=numeigs, method=method, q=150)
-         
-    
+
+
     if not found:
         G.save(graph_filename)
 
@@ -53,7 +53,7 @@ def load_graph(dataset, metric, numeigs=200, data_dir="data"):
 
 def get_active_learner_eig(G, labeled_ind, labels, acq_func_name, gamma=0.1, normalization='combinatorial'):
     numeigs = 50 # default
-    if len(acq_func_name.split("-")[-1]) > 0:
+    if len(acq_func_name.split("-")) > 1:
         numeigs = int(acq_func_name.split("-")[-1])
 
     # determine if need to recompute eigenvalues/vectors
@@ -77,5 +77,5 @@ def get_active_learner_eig(G, labeled_ind, labels, acq_func_name, gamma=0.1, nor
         print("Warning: Computing eigendata with gl.active_learning defaults...")
         active_learner = gl.active_learning.active_learning(G, labeled_ind.copy(), labels[labeled_ind], \
                     eval_cutoff=numeigs, gamma=gamma)
-       
+
     return active_learner
