@@ -36,35 +36,37 @@ if __name__ == "__main__":
     # load in configuration file
     with open(args.config, 'r') as f:
         config = yaml.safe_load(f)
-    
-    
+
+
     # Define ssl models and acquisition functions from configuration file
     ACQS_MODELS = config["acqs_models"]
     acq_funcs_names = [name.split(" ")[0] for name in ACQS_MODELS]
     acq_funcs = [ACQS[name.split("-")[0]] for name in acq_funcs_names]
     model_names = [name.split(" ")[1] for name in ACQS_MODELS]
-    
+
     # Determine if we need to calculate more eigenvectors/values for mc, vopt, mcvopt acquisitions
     maxnumeigs = 0
     for acq_func_name in acq_funcs_names:
+        if len(acq_func_name.split("-")) == 1:
+            continue
         d = acq_func_name.split("-")[-1]
         if len(d) > 0:
             if maxnumeigs < int(d):
                 maxnumeigs = int(d)
     if maxnumeigs == 0:
         maxnumeigs = None
-    
+
     # Load in the graph and labels
     print("Loading in Graph...")
     G, labels, trainset, normalization = load_graph(args.dataset, args.metric, maxnumeigs)
     models = get_models(G, model_names)
-    
-    
+
+
     # use only enough cores as length of models
     if args.numcores > len(models):
         args.numcores = len(models)
-    
-    
+
+
     # define the seed set for the iterations. Allows for defining in the configuration file
     try:
         seeds = config["seeds"]
@@ -99,7 +101,7 @@ if __name__ == "__main__":
             # active_learner object
             if acq_func_name.split("-")[0] in ["mc", "mcvopt", "vopt"]:
                 active_learner = get_active_learner_eig(deepcopy(G), labeled_ind.copy(), labels, acq_func_name, gamma=args.gamma, normalization=normalization)
-                
+
             else:
                 active_learner = gl.active_learning.active_learning(deepcopy(G), labeled_ind.copy(), labels[labeled_ind], eval_cutoff=None)
 
