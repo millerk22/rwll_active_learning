@@ -121,6 +121,8 @@ if __name__ == "__main__":
         overall_results_file = os.path.join(overall_results_dir, f"{acc_model_name}_stats.csv")
         acc_files = glob(os.path.join("results", f"{args.dataset}_results_*_{args.iters}", f"{acc_model_name}", "accs.csv"))
         dfs = [pd.read_csv(f) for f in sorted(acc_files)]
+        if len(dfs) == 0:
+            continue
         possible_columns = reduce(np.union1d, [df.columns for df in dfs])
         all_columns = {}
         for col in possible_columns:

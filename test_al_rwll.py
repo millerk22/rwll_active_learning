@@ -117,7 +117,10 @@ if __name__ == "__main__":
 
             for j in iterator_object:
                 # should handle oracle update inside object
-                query_inds = active_learner.select_query_points(acq_func, u)
+                if acq_func_name == "betavar":
+                    query_inds = active_learner.select_query_points(acq_func, model.A) # need to evaluate A, not u for betavar
+                else:
+                    query_inds = active_learner.select_query_points(acq_func, u)
                 active_learner.update_labeled_data(query_inds, labels[query_inds])
 
                 # model update
