@@ -42,6 +42,31 @@ class betavar(acquisition_function):
         a = (u * u).sum(axis=1)
         return ((1. - a/(a0**2.))/(1. + a0))[active_learning.candidate_inds]
 
+    
+class betavarprop(acquisition_function):
+    '''
+    Beta Learning Variance, with proportional sampling, not max.
+    
+    CURRENTLY ONLY IMPLEMENTED FOR SEQUENTIAL, NOT BATCH
+    '''
+    def __init__(self, percentile=80):
+        self.percentile = percentile
+        
+    def compute_values(self, active_learning, u):
+        a0 = u.sum(axis=1)
+        a = (u * u).sum(axis=1)
+        acq_vals = ((1. - a/(a0**2.))/(1. + a0))[active_learning.candidate_inds]
+        
+        # do proportional sampling herein to choose a point k_choice that is not necessarily the maximizer
+        inds = np.where(acq_vals >= np.percentile(acq_vals, self.percentile))[0]
+        k_choice = np.random.choice(inds) # uniform over the top (100 - self.percentile)% of points
+        
+        # return values so that this k_choice will be the maximizer
+        return_vals = np.zeros_like(acq_vals)
+        return_vals[k_choice] = 1.0
+        
+        return return_vals
+
 class random(acquisition_function):
     '''
     Random choices
@@ -58,6 +83,8 @@ ACQS = {'unc': uncertainty_sampling(),
         'mc':model_change(),
         'mcvopt':model_change_vopt(),
         'random':random(),
-        'betavar':betavar()}
+        'betavar':betavar(),
+        'betavarprop':betavarprop(),
+        'betavarprop70':betavarprop(70)}
     
 
