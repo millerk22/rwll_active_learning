@@ -323,7 +323,7 @@ class poisson_rw_laplace_decay(gl.ssl.ssl):
         #Left hand side matrix
         A = L[idx,:]
         A = A[:,idx]
-        A += self.tau_ll*sparse.eye(L.shape[0]) # add the tau diagonal for Laplace Learning
+        A += self.tau_ll*sparse.eye(A.shape[0]) # add the tau diagonal for Laplace Learning
 
         #Preconditioner
         m = A.shape[0]
