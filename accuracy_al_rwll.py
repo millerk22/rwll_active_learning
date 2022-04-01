@@ -44,7 +44,7 @@ if __name__ == "__main__":
     for out_num, RESULTS_DIR in enumerate(results_directories):
         choices_fnames = glob(os.path.join(RESULTS_DIR, "choices_*.npy"))
         choices_fnames = [fname for fname in choices_fnames if " ".join(fname.split("_")[-2:]).split(".")[0] in acqs_models ]
-        
+
         labeled_ind = np.load(os.path.join(RESULTS_DIR, "init_labeled.npy")) # initially labeled points that are common to all acq_func:gbssl modelname pairs
         for num, acc_model_name in enumerate(models_dict.keys()):
             acc_dir = os.path.join(RESULTS_DIR, acc_model_name)
@@ -64,6 +64,8 @@ if __name__ == "__main__":
                 if os.path.exists(acc_fname):
                     print(f"Already computed accuracies in {acc_model_name} for {acc_fname}")
                     return
+                else:
+                    print(f"Computing accuracies in {acc_model_name} for {acq_func_name} in {modelname}")
 
                 # get copy of model on this cpu
                 model = deepcopy(models_dict[acc_model_name])
