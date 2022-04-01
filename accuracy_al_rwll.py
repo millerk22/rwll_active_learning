@@ -33,14 +33,18 @@ if __name__ == "__main__":
     with open(args.config, 'r') as f:
         config = yaml.safe_load(f)
 
-    G, labels, trainset, normalization = load_graph(args.dataset, args.metric, numeigs=None) # don't compute any eigenvalues 
+    G, labels, trainset, normalization = load_graph(args.dataset, args.metric, numeigs=None) # don't compute any eigenvalues
     model_names = config["acc_models"]
     models = get_models(G, model_names)
     models_dict = {name:model for name, model in zip(model_names, models)}
     results_directories = glob(os.path.join("results", f"{args.dataset}_results_*_{args.iters}/"))
+    acqs_models = config["acqs_models"]
+
 
     for out_num, RESULTS_DIR in enumerate(results_directories):
         choices_fnames = glob(os.path.join(RESULTS_DIR, "choices_*.npy"))
+        choices_fnames = [fname for fname in choices_fnames if " ".join(fname.split("_")[-2:]).split(".")[0] in acqs_models ]
+        
         labeled_ind = np.load(os.path.join(RESULTS_DIR, "init_labeled.npy")) # initially labeled points that are common to all acq_func:gbssl modelname pairs
         for num, acc_model_name in enumerate(models_dict.keys()):
             acc_dir = os.path.join(RESULTS_DIR, acc_model_name)
