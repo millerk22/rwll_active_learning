@@ -125,9 +125,11 @@ for epoch in range(1, 100):
 print('GCN: %d,%.2f'%(len(I),100*test_acc))
 
 #Run Poisson learning
-#poisson_labels = gl.graph_ssl(W,I,labels[I],algorithm='poisson')
-#print('Poisson Learning: %.2f'%(gl.accuracy(labels,poisson_labels,len(I))))
+poisson = gl.ssl.poisson(W)
+poisson_labels = poisson.fit_predict(I,labels[I])
+print('Poisson Learning: %.2f'%(gl.ssl.ssl_accuracy(labels,poisson_labels,len(I))))
 
 #Run Laplace learning
-#laplace_labels = gl.graph_ssl(W,I,labels[I],algorithm='laplace')
-#print('Laplace Learning: %.2f'%(gl.accuracy(labels,laplace_labels,len(I))))
+laplace = gl.ssl.laplace(W, reweighting="poisson")
+laplace_labels = laplace.fit_predict(I,labels[I])
+print('RW Laplace Learning: %.2f'%(gl.ssl.ssl_accuracy(labels,laplace_labels,len(I))))
