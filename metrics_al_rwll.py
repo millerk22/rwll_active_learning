@@ -84,7 +84,7 @@ if __name__ == "__main__":
                     u = model.fit(train_ind, labels[train_ind])
                     u_thresh = model.predict()
                     acc = np.append(acc, gl.ssl.ssl_accuracy(u_thresh, labels, train_ind.size))
-                    avg_acc_j = np.array([gl.ssl.ssl_accuracy(u_thresh[labels==c], labels[labels==c], (train_ind == c).sum()) for c in range(nc)])
+                    avg_acc_j = np.array([gl.ssl.ssl_accuracy(u_thresh[labels==c], labels[labels==c], (train_ind == c).sum()) for c in np.unique(labels)])
                     avg_acc = np.append(avg_acc, np.average(avg_acc_j))
                     kappa = np.append(kappa, cohen_kappa_score(u_thresh, labels))
 
