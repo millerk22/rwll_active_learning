@@ -62,8 +62,8 @@ if __name__ == "__main__":
 
                 # define the filepath of where the results of evaluating this acq_func:modelname combo had in acc_model_name
                 metric_fname = os.path.join(acc_dir, f"metrics_{acq_func_name}_{modelname}.npy")
-                if os.path.exists(acc_fname):
-                    print(f"Already computed metrics in {acc_model_name} for {acc_fname}")
+                if os.path.exists(metric_fname):
+                    print(f"Already computed metrics in {acc_model_name} for {metric_fname}")
                     return
                 else:
                     print(f"Computing metrics in {acc_model_name} for {acq_func_name} in {modelname}")
