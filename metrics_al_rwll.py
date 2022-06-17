@@ -23,7 +23,7 @@ from joblib import Parallel, delayed
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Compute Accuracies in Parallel of Active Learning Tests for RWLL Learning")
-    parser.add_argument("--dataset", type=str, default='mstar-evenodd')
+    parser.add_argument("--dataset", type=str, default='mnist-evenodd')
     parser.add_argument("--metric", type=str, default='vae')
     parser.add_argument("--numcores", type=int, default=9)
     parser.add_argument("--config", type=str, default="./config.yaml")

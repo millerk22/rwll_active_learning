@@ -1,0 +1,11 @@
+acqs_models:
+  - "unc gcn"
+  - "pagerank gcn"
+  - "degree gcn"
+  - "random gcn"
+
+acc_models:
+  - "rwll01"
+  - "gcn"
+
+seeds: [2, 3, 5, 6]
