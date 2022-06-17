@@ -27,6 +27,7 @@ if __name__ == "__main__":
     parser.add_argument("--numcores", type=int, default=9)
     parser.add_argument("--config", type=str, default="./config.yaml")
     parser.add_argument("--iters", type=int, default=100)
+    parser.add_argument("--resultsdir", type=str, default="results")
     args = parser.parse_args()
 
     # load in configuration file
@@ -34,17 +35,18 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
 
     G, labels, trainset, normalization = load_graph(args.dataset, args.metric, numeigs=None) # don't compute any eigenvalues
-    model_names = config["acc_models"]
+    model_names = [name for name in config["acc_models"] if name[:3] != "gcn"]
     models = get_models(G, model_names)
     models_dict = {name:model for name, model in zip(model_names, models)}
-    results_directories = glob(os.path.join("results", f"{args.dataset}_results_*_{args.iters}/"))
+    results_directories = glob(os.path.join(args.resultsdir, f"{args.dataset}_results_*_{args.iters}/"))
     acqs_models = config["acqs_models"]
+    
+    
 
 
     for out_num, RESULTS_DIR in enumerate(results_directories):
         choices_fnames = glob(os.path.join(RESULTS_DIR, "choices_*.npy"))
         choices_fnames = [fname for fname in choices_fnames if " ".join(fname.split("_")[-2:]).split(".")[0] in acqs_models ]
-
         labeled_ind = np.load(os.path.join(RESULTS_DIR, "init_labeled.npy")) # initially labeled points that are common to all acq_func:gbssl modelname pairs
         for num, acc_model_name in enumerate(models_dict.keys()):
             acc_dir = os.path.join(RESULTS_DIR, acc_model_name)
@@ -114,28 +116,3 @@ if __name__ == "__main__":
         print("-"*40)
         print("-"*40)
     print()
-
-
-    # Get average and std curves over all tests
-    overall_results_dir = os.path.join("results", f"{args.dataset}_overall_{args.iters}")
-    if not os.path.exists(overall_results_dir):
-        os.makedirs(overall_results_dir)
-
-    results_models_directories = glob(os.path.join("results", f"{args.dataset}_results_*_{args.iters}", "*/"))
-    acc_model_names_list = np.unique([fpath.split("/")[-2] for fpath in results_models_directories])
-    for acc_model_name in tqdm(acc_model_names_list, desc=f"Saving results over all runs to: {overall_results_dir}", total=len(acc_model_names_list)):
-        overall_results_file = os.path.join(overall_results_dir, f"{acc_model_name}_stats.csv")
-        acc_files = glob(os.path.join("results", f"{args.dataset}_results_*_{args.iters}", f"{acc_model_name}", "accs.csv"))
-        dfs = [pd.read_csv(f) for f in sorted(acc_files)]
-        if len(dfs) == 0:
-            continue
-        possible_columns = reduce(np.union1d, [df.columns for df in dfs])
-        all_columns = {}
-        for col in possible_columns:
-            vals = np.array([df[col].values for df in dfs if col in df.columns])
-            all_columns[col + " : avg"] = np.average(vals, axis=0)
-            all_columns[col + " : std"] = np.std(vals, axis=0)
-
-        all_df = pd.DataFrame(all_columns)
-        all_df.to_csv(overall_results_file, index=None)
-    print("-"*40)

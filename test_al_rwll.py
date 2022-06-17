@@ -24,7 +24,7 @@ from joblib import Parallel, delayed
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Run Large Tests in Parallel of Active Learning Test for RW Laplace Learning")
-    parser.add_argument("--dataset", type=str, default='mstar-evenodd')
+    parser.add_argument("--dataset", type=str, default='mnist-evenodd')
     parser.add_argument("--metric", type=str, default='vae')
     parser.add_argument("--numcores", type=int, default=9)
     parser.add_argument("--iters", type=int, default=100)
@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
 
     # Define ssl models and acquisition functions from configuration file
-    ACQS_MODELS = config["acqs_models"]
+    ACQS_MODELS = [name for name in config["acqs_models"] if name.split(" ")[-1][:3] != "gcn"]
     acq_funcs_names = [name.split(" ")[0] for name in ACQS_MODELS]
     acq_funcs = [ACQS[name.split("-")[0]] for name in acq_funcs_names]
     model_names = [name.split(" ")[1] for name in ACQS_MODELS]

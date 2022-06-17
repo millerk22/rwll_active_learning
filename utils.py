@@ -2,7 +2,7 @@ import graphlearning as gl
 import os
 import numpy as np
 
-def load_graph(dataset, metric, numeigs=200, data_dir="data"):
+def load_graph(dataset, metric, numeigs=200, data_dir="data", returnX=False):
     X, labels = gl.datasets.load(dataset.split("-")[0], metric=metric)
     if dataset.split("-")[-1] == 'evenodd':
         labels = labels % 2
@@ -12,6 +12,8 @@ def load_graph(dataset, metric, numeigs=200, data_dir="data"):
 
     if dataset.split("-")[0] == 'mstar': # allows for specific train/test set split TODO
         trainset = None
+#     elif metric == "hsi":
+#         trainset = np.where(labels != 0)[0]
     else:
         trainset = None
 
@@ -31,23 +33,30 @@ def load_graph(dataset, metric, numeigs=200, data_dir="data"):
         G = gl.graph.load(graph_filename)
         found = True
     except:
-        W = gl.weightmatrix.knn(X, knn)
+        if metric == "hsi":
+            W = gl.weightmatrix.knn(X, knn, similarity="angular") # LAND does 100 in HSI
+        else:
+            W = gl.weightmatrix.knn(X, knn)
         G = gl.graph(W)
         found = False
 
     if numeigs is not None:
-        prev_numeigs = G.eigendata[normalization]['eigenvalues'].size
-        if prev_numeigs >= numeigs:
-            print("Retrieving Eigendata...")
-        else:
-            print(f"Requested {numeigs} eigenvalues, but have only {prev_numeigs} stored. Recomputing Eigendata...")
+        eigdata = G.eigendata[normalization]['eigenvalues']
+        if eigdata is not None:
+            prev_numeigs = eigdata.size
+            if prev_numeigs >= numeigs:
+                print("Retrieving Eigendata...")
+            else:
+                print(f"Requested {numeigs} eigenvalues, but have only {prev_numeigs} stored. Recomputing Eigendata...")
 
         evals, evecs = G.eigen_decomp(normalization=normalization, k=numeigs, method=method, q=150)
 
 
     if not found:
         G.save(graph_filename)
-
+    
+    if returnX:
+        return G, labels, trainset, normalization, X
     return G, labels, trainset, normalization
 
 
