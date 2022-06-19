@@ -11,7 +11,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str, default='mnist-mod3')
     parser.add_argument("--metric", type=str, default='vae')
     parser.add_argument("--iters", type=int, default=100)
-    parser.add_argument("--resultsdir", type=str, default="results_gcn")
+    parser.add_argument("--resultsdir", type=str, default="results")
     args = parser.parse_args()
     
 

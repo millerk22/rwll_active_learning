@@ -52,8 +52,7 @@ def load_graph(dataset, metric, numeigs=200, data_dir="data", returnX=False):
         evals, evecs = G.eigen_decomp(normalization=normalization, k=numeigs, method=method, q=150)
 
 
-    if not found:
-        G.save(graph_filename)
+    G.save(graph_filename)
     
     if returnX:
         return G, labels, trainset, normalization, X
@@ -77,8 +76,13 @@ def get_active_learner_eig(G, labeled_ind, labels, acq_func_name, gamma=0.1, nor
         # Current gl.active_learning is implemented only to allow for exact eigendata compute for "normalized"
         print(f"Using previously stored {normalization} eigendata with {numeigs} evals for computing {acq_func_name}")
         active_learner = gl.active_learning.active_learning(G, labeled_ind.copy(), labels[labeled_ind], eval_cutoff=None)
+        
         active_learner.evals = G.eigendata[normalization]['eigenvalues'] 
         active_learner.evecs = G.eigendata[normalization]['eigenvectors'] 
+        if acq_func_name.split("-")[0][-1] == "1":
+            active_learner.evals = active_learner.evals[1:] 
+            active_learner.evecs = active_learner.evecs[:,1:]
+        
         active_learner.gamma = gamma
         active_learner.cov_matrix = np.linalg.inv(np.diag(active_learner.evals) + active_learner.evecs[active_learner.current_labeled_set,:].T @ active_learner.evecs[active_learner.current_labeled_set,:] / active_learner.gamma**2.)
         active_learner.init_cov_matrix = active_learner.cov_matrix
@@ -86,6 +90,12 @@ def get_active_learner_eig(G, labeled_ind, labels, acq_func_name, gamma=0.1, nor
         print("Warning: Computing eigendata with gl.active_learning defaults...")
         active_learner = gl.active_learning.active_learning(G, labeled_ind.copy(), labels[labeled_ind], \
                     eval_cutoff=numeigs, gamma=gamma)
-
+        
+        if acq_func_name.split("-")[0][-1] == "1":
+            active_learner.evals = active_learner.evals[1:] 
+            active_learner.evecs = active_learner.evecs[:,1:]
+            active_learner.cov_matrix = np.linalg.inv(np.diag(active_learner.evals) +  active_learner.evecs[active_learner.current_labeled_set,:].T @ active_learner.evecs[active_learner.current_labeled_set,:] / active_learner.gamma**2.)
+            active_learner.init_cov_matrix = active_learner.cov_matrix
+    print(f"{acq_func_name}, {active_learner.evals.size}")
     return active_learner
 

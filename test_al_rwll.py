@@ -99,8 +99,9 @@ if __name__ == "__main__":
 
             # based on the acquisition function name, determine if need to compute the covariance matrix for instantiating
             # active_learner object
-            if acq_func_name.split("-")[0] in ["mc", "mcvopt", "vopt"]:
+            if acq_func_name.split("-")[0] in ["mc", "mcvopt", "vopt", "vopt1"]:
                 active_learner = get_active_learner_eig(deepcopy(G), labeled_ind.copy(), labels, acq_func_name, gamma=args.gamma, normalization=normalization)
+            
 
             else:
                 active_learner = gl.active_learning.active_learning(deepcopy(G), labeled_ind.copy(), labels[labeled_ind], eval_cutoff=None)
