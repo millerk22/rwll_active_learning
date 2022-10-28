@@ -9,6 +9,7 @@ The experiments in this repository are built around Jeff Calder's [GraphLearning
 In addition to standard Python packages ``numpy, scipy, pandas,`` and ``matplotlib``, you will need 
 * ``graphlearning``: ``pip install graphlearning``
 * ``tqdm``
+* ``pytorch`` (if looking to train the VAE embeddings for EMNIST locally)
 
 ## Experiment organization
 
@@ -28,4 +29,6 @@ We have provided the bash script ``run_decay.sh`` with most experiments commente
 
 __Note:__ In order to adapt the pipeline to the Isolet experiments and the VOpt/SigmaOpt "Full" acquisition functions, we created separate scripts ``test_al_gl_isolet.py``, ``accuracy_al_gl_isolet.py``, and ``test_al_gl_voptfull.py``. 
  
+## VAE Training for EMNIST
 
+While the VAE embeddings are already precomputed in the GraphLearning package, we provide the script ``emnist_vae.py`` we used to train a standard VAE for the EMNIST dataset. The resulting embeddings are stored in the zipped file ``data/emnist_vae.npz``. 
