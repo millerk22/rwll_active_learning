@@ -12,6 +12,14 @@ python compile_summary.py --dataset emnist-mod5 --iters 400 --resultsdir results
 
 
 
+<<<<<<< HEAD
+=======
+# python test_al_gl.py --dataset isolet --metric raw --K 20 --config config.yaml --resultsdir results_decay 
+# python accuracy_al_gl.py --dataset isolet --metric raw --config config.yaml --resultsdir results_decay
+# python compile_summary.py --dataset isolet --resultsdir results_decay
+
+
+>>>>>>> 2d83352046eb53e2a8e4c9cf3c0d3a4a26fb3a91
 # python test_al_gl.py --dataset box --metric raw --K 8 --config config_small.yaml --resultsdir results_decay 
 # python accuracy_al_gl.py --dataset box --metric raw --config config_small.yaml --resultsdir results_decay
 # python compile_summary.py --dataset box --resultsdir results_decay
