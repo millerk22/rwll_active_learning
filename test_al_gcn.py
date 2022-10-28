@@ -12,7 +12,6 @@ from copy import deepcopy
 from glob import glob
 from scipy.special import softmax
 from functools import reduce
-from gl_models import get_models
 from utils import *
 from gcn_util import *
 from acquisitions import *
@@ -26,7 +25,7 @@ from joblib import Parallel, delayed
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Run Large Tests in Parallel of Active Learning Test for GCN")
-    parser.add_argument("--dataset", type=str, default='mnist-evenodd')
+    parser.add_argument("--dataset", type=str, default='mnist-mod3')
     parser.add_argument("--metric", type=str, default='vae')
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--labelseed", type=int, default=3)

@@ -1,4 +1,4 @@
-from graphlearning.active_learning import acquisition_function, model_change, v_opt, model_change_vopt, uncertainty_sampling
+from graphlearning.active_learning import acquisition_function, model_change, v_opt, model_change_vopt, uncertainty_sampling, sigma_opt
 import numpy as np
 from scipy.special import softmax
 from scipy.stats import entropy as spentropy
@@ -32,43 +32,6 @@ class uncnorm(acquisition_function):
     '''
     def compute_values(self, active_learning, u):
         return 1. - np.linalg.norm(u[active_learning.candidate_inds], axis=1)
-
-
-class betavar(acquisition_function):
-    '''
-    Beta Learning Variance
-
-    Note: u now is actually the matrix A in beta learning. Need to ensure
-    '''
-    def compute_values(self, active_learning, u):
-        a0 = u.sum(axis=1)
-        a = (u * u).sum(axis=1)
-        return ((1. - a/(a0**2.))/(1. + a0))[active_learning.candidate_inds]
-
-    
-class betavarprop(acquisition_function):
-    '''
-    Beta Learning Variance, with proportional sampling, not max.
-    
-    CURRENTLY ONLY IMPLEMENTED FOR SEQUENTIAL, NOT BATCH
-    '''
-    def __init__(self, percentile=80):
-        self.percentile = percentile
-        
-    def compute_values(self, active_learning, u):
-        a0 = u.sum(axis=1)
-        a = (u * u).sum(axis=1)
-        acq_vals = ((1. - a/(a0**2.))/(1. + a0))[active_learning.candidate_inds]
-        
-        # do proportional sampling herein to choose a point k_choice that is not necessarily the maximizer
-        inds = np.where(acq_vals >= np.percentile(acq_vals, self.percentile))[0]
-        k_choice = np.random.choice(inds) # uniform over the top (100 - self.percentile)% of points
-        
-        # return values so that this k_choice will be the maximizer
-        return_vals = np.zeros_like(acq_vals)
-        return_vals[k_choice] = 1.0
-        
-        return return_vals
 
 class random(acquisition_function):
     '''
@@ -123,19 +86,130 @@ class AGE(acquisition_function):
         # return acquisition values only on the candidate indices
         return finalweight[active_learning.candidate_inds]
 
+class voptfull(acquisition_function):
+    '''
+    FULL Vopt, uses L^{-1}
+    '''
+        
+    def compute_values(self, active_learning, u):
+        assert hasattr(active_learning, "fullC")
+        vopt_values = np.linalg.norm(active_learning.fullC[:, active_learning.candidate_inds], axis=0)**2.
+        vopt_values /= active_learning.fullC[active_learning.candidate_inds, active_learning.candidate_inds].flatten()
+        return vopt_values
+
+class uncnormprop_OLD(acquisition_function):
+    '''
+    Sample proportional to the acquisition function's values.
+    
+    Currently implemented for SEQUENTIAL only
+    '''
+    def compute_values(self, active_learning, u):
+        vals = 1. - np.linalg.norm(u[active_learning.candidate_inds,:], axis=1)
+        
+        # scaling for p(x) \propto e^{x/T}, where T is scales as the values change
+        T = vals.max() - np.percentile(vals, 90)
+        T = max(0.01, min(1,T))
+        p = np.exp(vals/T)
+        
+        # select a point at random according to the probabilities previously calculated and then return standard basis vector of that index
+        k_choice = np.random.choice(np.arange(active_learning.candidate_inds.size), p=p/p.sum())
+        acq_vals = np.zeros_like(active_learning.candidate_inds)
+        acq_vals[k_choice] = 1.
+        return acq_vals
+    
+    
+class uncnormprop(acquisition_function):
+    '''
+    Sample proportional to the acquisition function's values.
+    
+    Currently implemented for SEQUENTIAL only
+    '''
+    def __init__(self):
+        self.K = 10
+        self.log_Eps_tilde = np.log(1e150)  # log of square root of roughly the max precision of python float
+    
+    def set_K(self, K):
+        print(f"Setting K = {K} for uncnormprop")
+        self.K = K
+        
+    def compute_values(self, active_learning, u):
+        vals = 1. - np.linalg.norm(u[active_learning.candidate_inds,:], axis=1)
+        
+        # scaling for p(x) \propto e^{x/T}, where T is scales as the values change. Ensures no numerical overflow occurs
+        M = vals.max()
+        T0 = M - np.percentile(vals, 100*(1. - 1./self.K))
+        eps = M / (self.log_Eps_tilde - np.log(vals.size))
+        T = max(eps, min(1.0,T0))
+        p = np.exp(vals/T)
+        
+        # select a point at random according to the probabilities previously calculated and then return standard basis vector of that index
+        k_choice = np.random.choice(np.arange(active_learning.candidate_inds.size), p=p/p.sum())
+        acq_vals = np.zeros_like(active_learning.candidate_inds)
+        acq_vals[k_choice] = 1.
+        
+        return acq_vals
+    
+class uncnormprop_plusplus(acquisition_function):
+    '''
+    Sample proportional to the acquisition function's values.
+    
+    Currently implemented for SEQUENTIAL only
+    '''
+    def __init__(self):
+        self.K = 10
+        self.log_Eps_tilde = np.log(1e150)  # log of square root of roughly the max precision of python float
+    
+    def set_K(self, K):
+        print(f"Setting K = {K} for uncnormprop++")
+        self.K = K
+        
+    def compute_values(self, active_learning, u):
+        vals = 1. - np.linalg.norm(u[active_learning.candidate_inds,:], axis=1)
+        
+        # scaling for p(x) \propto e^{x/T}, where T is scales as the values change. Ensures no numerical overflow occurs
+        M = vals.max()
+        T0 = M - np.percentile(vals, 100*(1. - 1./self.K))
+        eps = M / (self.log_Eps_tilde - np.log(vals.size))
+        T = max(eps, min(1.0,T0))
+        p = np.exp(vals/T)
+        
+        # select a batch of points at random according to the probabilities previously calculated and then return standard basis vector of the maximizing index
+        k_choices = np.random.choice(np.arange(active_learning.candidate_inds.size), 10, replace=False, p=p/p.sum())
+        k_choice = k_choices[np.argmax(vals[k_choices])]
+        acq_vals = np.zeros_like(active_learning.candidate_inds)
+        acq_vals[k_choice] = 1.
+        
+        return acq_vals
+
+
 ACQS = {'unc': uncertainty_sampling(),
+        'unckde': uncertainty_sampling(),
         'uncsftmax':uncsftmax(),
         'uncdist':uncdist(),
         'uncsftmaxnorm':uncertainty_sampling("norm"),
         'uncnorm':uncnorm(),
+        'uncnormkde':uncnorm(),
+        'uncnormdecaytau': uncnorm(),
+        'uncnormdecaytaukde': uncnorm(),
+        'uncnormswitchK': uncnorm(),
+        'uncnormswitchKcheat': uncnorm(),
+        'uncnormprop': uncnormprop(),
+        'uncnormpropdecaytau': uncnormprop(),
+        'uncnormpropswitchK': uncnormprop(),
+        'uncnormprop++': uncnormprop_plusplus(),
+        'uncnormprop++decaytau': uncnormprop_plusplus(),
+        'uncnormprop++switchK': uncnormprop_plusplus(),
+        'uncnormprop++kde': uncnormprop_plusplus(),
+        'uncnormprop++decaytaukde': uncnormprop_plusplus(),
+        'uncnormprop++switchKkde': uncnormprop_plusplus(),
         'vopt':v_opt(),
         'vopt1':v_opt(),
+        'sopt':sigma_opt(),
+        'voptfull':voptfull(),
         'mc':model_change(),
+        'mc1':model_change(),
         'mcvopt':model_change_vopt(),
         'random':random(),
-        'betavar':betavar(),
-        'betavarprop':betavarprop(),
-        'betavarprop70':betavarprop(70),
         'pagerank':static_values(),
         'degree':static_values(),
         'age':AGE()

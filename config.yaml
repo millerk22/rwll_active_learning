@@ -1,11 +1,10 @@
 acqs_models:
-  - "betavar beta01"
-  - "betavarprop beta01"
-  - "random beta01"
+  - "vopt rwll0100"
+  - "sopt rwll0100"
   
 
 acc_models:
-  - "beta01" 
-  - "beta1"
+  - "rwll"
+  - "rwll0100"
 
-seeds: [2, 3, 5, 6]
+seeds: [2, 3, 5, 6, 15, 16, 29, 30, 49, 50]
