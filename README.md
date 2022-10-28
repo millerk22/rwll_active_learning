@@ -6,7 +6,9 @@ The experiments in this repository are built around Jeff Calder's [GraphLearning
 
 ## Required packages
 
-See the ``requirements.txt`` file for Python packages necessary to run the scripts in this repository.
+In addition to standard Python packages ``numpy, scipy, pandas,`` and ``matplotlib``, you will need 
+* ``graphlearning``: ``pip install graphlearning``
+* ``tqdm``
 
 ## Experiment organization
 
