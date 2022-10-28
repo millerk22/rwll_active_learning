@@ -12,7 +12,6 @@ from copy import deepcopy
 from glob import glob
 from scipy.special import softmax
 from functools import reduce
-from gl_models import get_models
 from utils import *
 from acquisitions import ACQS
 
@@ -21,13 +20,13 @@ from joblib import Parallel, delayed
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser(description="Compute Accuracies in Parallel of Active Learning Tests for RWLL Learning")
-    parser.add_argument("--dataset", type=str, default='mstar-evenodd')
+    parser = ArgumentParser(description="Compute Accuracies in Parallel of Active Learning Tests for Graph Learning on Isolet")
+    parser.add_argument("--dataset", type=str, default='isolet')
     parser.add_argument("--metric", type=str, default='vae')
     parser.add_argument("--numcores", type=int, default=9)
-    parser.add_argument("--config", type=str, default="./config.yaml")
+    parser.add_argument("--config", type=str, default="./config_isolet.yaml")
     parser.add_argument("--iters", type=int, default=100)
-    parser.add_argument("--resultsdir", type=str, default="results")
+    parser.add_argument("--resultsdir", type=str, default="results_isolet")
     args = parser.parse_args()
 
     # load in configuration file
@@ -48,12 +47,13 @@ if __name__ == "__main__":
         choices_fnames = glob(os.path.join(RESULTS_DIR, "choices_*.npy"))
         choices_fnames = [fname for fname in choices_fnames if " ".join(fname.split("_")[-2:]).split(".")[0] in acqs_models ]
         labeled_ind = np.load(os.path.join(RESULTS_DIR, "init_labeled.npy")) # initially labeled points that are common to all acq_func:gbssl modelname pairs
+        
         for num, acc_model_name in enumerate(models_dict.keys()):
             acc_dir = os.path.join(RESULTS_DIR, acc_model_name)
             if not os.path.exists(acc_dir):
                 os.makedirs(acc_dir)
 
-            def compute_accuracies(choices_fname, show_tqdm):
+            def compute_accuracies(choices_fname):
                 # get acquisition function - gbssl modelname that made this sequence of choices
                 acq_func_name, modelname = choices_fname.split("_")[-2:]
                 modelname = modelname.split(".")[0]
@@ -71,31 +71,28 @@ if __name__ == "__main__":
 
                 # get copy of model on this cpu
                 model = deepcopy(models_dict[acc_model_name])
-
-                # define iterator to have same number of accuracy evaluations as those already done
-                if show_tqdm:
-                    iterator_object = tqdm(range(labeled_ind.size,choices.size+1), desc=f"Computing Acc of {acq_func_name}-{modelname}")
-                else:
-                    iterator_object = range(labeled_ind.size,choices.size+1)
-
+                
                 # Compute accuracies at each sequential subset of choices
                 acc = np.array([])
-                for j in iterator_object:
+                for j in tqdm(range(labeled_ind.size,choices.size+1), desc=f"Computing Acc of {acq_func_name}-{modelname}"):
                     train_ind = choices[:j]
-                    u = model.fit(train_ind, labels[train_ind])
-                    acc = np.append(acc, gl.ssl.ssl_accuracy(model.predict(), labels, train_ind.size))
+                    seen_labels = np.sort(np.unique(labels[train_ind]))
+                    zeroed_curr_labels = np.zeros_like(train_ind)
+                    for k, c in enumerate(seen_labels):
+                         zeroed_curr_labels[np.where(labels[train_ind] == c)] = k
+                    u_sub = model.fit(train_ind, zeroed_curr_labels)
+                    u = np.zeros((G.num_nodes, np.unique(labels).size))
+                    u[:, seen_labels] = u_sub
+                    acc = np.append(acc, gl.ssl.ssl_accuracy(np.argmax(u, axis=1), labels, train_ind.size))
 
                 # save accuracy results to corresponding filename
                 np.save(acc_fname, acc)
                 return
 
             print(f"-------- Computing Accuracies in {acc_model_name}, {num+1}/{len(models_dict)} in {RESULTS_DIR} ({out_num+1}/{len(results_directories)}) -------")
-            # show_bools is for tqdm iterator to track progress of some
-            show_bools = np.zeros(len(choices_fnames), dtype=bool)
-            show_bools[::args.numcores] = True
 
-            Parallel(n_jobs=args.numcores)(delayed(compute_accuracies)(choices_fname, show) for choices_fname, show \
-                    in zip(choices_fnames, show_bools))
+            Parallel(n_jobs=args.numcores)(delayed(compute_accuracies)(choices_fname) for choices_fname \
+                    in choices_fnames)
             print()
 
         # Consolidate results

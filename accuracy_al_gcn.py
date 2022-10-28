@@ -12,7 +12,6 @@ from copy import deepcopy
 from glob import glob
 from scipy.special import softmax
 from functools import reduce
-from gl_models import get_models
 from utils import *
 from gcn_util import *
 from acquisitions import ACQS
