@@ -95,12 +95,20 @@ if __name__ == "__main__":
             acc_dir = os.path.join(RESULTS_DIR, acc_model_name)
             accs_fnames = glob(os.path.join(acc_dir, "acc_*.npy"))
             columns = {}
+            max_length = 0
             for fname in accs_fnames:
                 acc = np.load(fname)
                 acq_func_name, modelname = fname.split("_")[-2:]
                 modelname = modelname.split(".")[0]
                 columns[acq_func_name + " : " + modelname] = acc
-
+                if acc.size > max_length:
+                    max_length = acc.size
+            
+            for k, col in columns.items():
+                if col.size < max_length:
+                    print(f"found col = {k} of too short lenghth, padding with nans")
+                    columns[k] = np.concatenate((col, np.full(max_length - col.size, fill_value=np.nan)))
+            
             acc_df = pd.DataFrame(columns)
             acc_df.to_csv(os.path.join(acc_dir, "accs.csv"), index=None)
 
