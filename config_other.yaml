@@ -1,0 +1,12 @@
+acqs_models:
+  - "s2 s2"
+  - "land land"
+  - "cal cal"
+  
+
+acc_models:
+  - "rwll"
+  - "rwll0010"
+  - "laplace" # include only for isolet test
+
+seeds: [2, 3, 5, 6, 15, 16, 29, 30, 49, 50]
