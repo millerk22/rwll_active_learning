@@ -31,4 +31,9 @@ __Note:__ In order to adapt the pipeline to the Isolet experiments and the VOpt/
  
 ## VAE Training for EMNIST
 
-While the VAE embeddings are already precomputed in the GraphLearning package, we provide the script ``emnist_vae.py`` we used to train a standard VAE for the EMNIST dataset. The resulting embeddings are stored in the zipped file ``data/emnist_vae.npz``. 
+While the VAE embeddings are already precomputed in the GraphLearning package, we provide the script ``emnist_vae.py`` we used to train a standard VAE for the EMNIST dataset. The resulting embeddings are stored in the zipped file ``data/emnist_vae.npz``.
+
+
+## MATLAB data for comparison
+
+In order to compare against Cautious Active Learning (CAL) and Learning by Active Nonlinear Diffusion (LAND), we used the respective authors' code which was written in MATLAB. We have provided the outputs of their code in the directories contained in ``data_matlab``. Further questions about their code (and our experiments with incorporating their code) can be directed to ``ksmiller@utexas.edu``. 
