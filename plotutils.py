@@ -8,6 +8,7 @@ sns.set_style('whitegrid')
 import graphlearning as gl
 from acquisitions import ACQS
 from test_al_gl import get_active_learner
+import pickle
 
 acq_color = {'random':'r', 'vopt':'cyan', 'voptfull':'grey',  'mcvopt':'k', 'sopt':'lime', 'soptfull':'magenta',
              'uncnorm':'blue',
@@ -65,15 +66,14 @@ class dummy_args(object):
         self.gamma = 0.1
 
 def plot_acc_toy(dataset="box", acq_to_show=["unc : rwll", "uncnorm : rwll0010", "uncnorm : rwll0010", 
-                 "uncnormdecaytau : rwll0010"], 
-                 resultsdir="results", savedir=None, ymin=80, bbox_to_anchor=(1.15,-0.16), 
-                idx_heatmap=[0, 15, 50], showbinned=False, seed=2):
-    nstart = np.load(f"{resultsdir}/{dataset}_results_2_100/init_labeled.npy").size
+                 "uncnormdecaytau : rwll0010"], resultsdir="results", savedir=None, ymin=80, bbox_to_anchor=(1.15,-0.16), 
+                  idx_heatmap=[0, 15, 50], showbinned=False, seed=2, tot_iters=100, simplex=False, knn=20, 
+                 eig_normalization='combinatorial'):
+    nstart = np.load(f"{resultsdir}/{dataset}_results_2_{tot_iters}/init_labeled.npy").size
     
     dataset_data = np.load(f"data/{dataset}_raw.npz")
     X, labels = dataset_data['data'], dataset_data['labels']
-    G = gl.graph.load(f"data/{dataset}_20")
-    
+    G = gl.graph.load(f"data/{dataset}_{knn}")
     
     
     for acq in acq_to_show:
@@ -93,7 +93,7 @@ def plot_acc_toy(dataset="box", acq_to_show=["unc : rwll", "uncnorm : rwll0010",
             acq_func = gl.active_learning.uncertainty_sampling()
         else:
             acq_func = ACQS[acq_name]
-        fnames = sorted(glob(f"{resultsdir}/{dataset}_results_{seed}_100/choices_{acq_name}_{modelname}.npy"))
+        fnames = sorted(glob(f"{resultsdir}/{dataset}_results_{seed}_{tot_iters}/choices_{acq_name}_{modelname}.npy"))
         print(acq, fnames)
         if len(fnames) == 0:
             continue
@@ -102,14 +102,17 @@ def plot_acc_toy(dataset="box", acq_to_show=["unc : rwll", "uncnorm : rwll0010",
         for idx in idx_heatmap:
             train_ind = choices[:idx+nstart]
             args = dummy_args()
-            AL = get_active_learner(acq_name, G, labels, train_ind, normalization='normalized', args=args)
+            AL = get_active_learner(acq_name, G, labels, train_ind, normalization=eig_normalization, args=args)
             AL.candidate_inds = np.setdiff1d(AL.training_set, AL.current_labeled_set)
+            if acq_name in ["voptfull", "soptfull"]:
+                print("Prepping full C")
+                for idx in AL.current_labeled_set:
+                    AL.fullC -= np.outer(AL.fullC[:,idx], AL.fullC[:,idx])/(0.1**2. + AL.fullC[idx, idx])
             
             if modelname[-1] == '0' and idx > 8 and acq_name[-8:] == 'decaytau':
                 model.tau = np.zeros_like(model.tau)
             u = model.fit(train_ind, labels[train_ind])
             af_vals = acq_func.compute_values(AL, u)
-            
             
             fig, ax = plt.subplots(figsize=(8,6))
             ax.scatter(X[AL.candidate_inds,0], X[AL.candidate_inds,1], c=af_vals, cmap='viridis')
@@ -121,6 +124,23 @@ def plot_acc_toy(dataset="box", acq_to_show=["unc : rwll", "uncnorm : rwll0010",
                 ax.set_title("")
                 plt.savefig(f"{savedir}/{acq_name}_{modelname}_afvals_{idx}.jpg", format="jpeg", bbox_inches='tight')
             plt.show()
+            
+            
+            if simplex:
+                simplex_dom = np.linspace(0, 1, 11)
+                fig, ax = plt.subplots(figsize=(4,4))
+                u0 = u[:,0].flatten()[::10]
+                u1 = u[:,1].flatten()[::10]
+                ax.scatter(u0, u1, marker='x', s=50, zorder=7, alpha=0.5)
+                ax.scatter(u[train_ind,0], u[train_ind,1], marker='*',c='r', zorder=8, s=50)
+                ax.plot(simplex_dom, 1. - simplex_dom, "--", linewidth=2.5, color='k', alpha=0.3) 
+                ax.axis('square')
+                ax.set_xticks(np.linspace(0,1,6))
+                ax.set_xlabel(r"$u_0(x)$", fontsize=16)
+                ax.set_ylabel(r"$u_1(x)$", fontsize=16)
+                ax.tick_params(axis='x', labelsize=12)
+                ax.tick_params(axis='y', labelsize=12)
+                plt.show()
     
     return
  
@@ -174,8 +194,10 @@ def plot_acc(dataset="mnist-mod3", modelname="rwll", resultsdir="results",
     for col in df:
 #         df[col].plot(ax=ax, title=title, linewidth=2.0,  marker=markermap[col], color=colormap[col], alpha=0.8)
         column = df[col]
-        ax.plot(column.index, column.values, linewidth=2.0, color=colormap[col], alpha=0.8)
         values = column.iloc[::2]
+#         ax.plot(column.index, column.values, linewidth=2.0, color=colormap[col], alpha=0.8)
+        ax.plot(values.index, values.values, linewidth=2.0, color=colormap[col], alpha=0.8)
+        
         x = values.index
         ax.scatter(values.index, values.values, linewidth=2.0,  marker=markermap[col],color=colormap[col],
                    alpha=0.8, label=col)
@@ -310,8 +332,9 @@ def plot_cluster_exploration(dataset="mnist", problem="mod3", resultsdir="result
     for col in df:
 #         df[col].plot(ax=ax, title=title, linewidth=2.0,  marker=markermap[col], color=colormap[col], alpha=0.8)
         column = df[col]
-        ax.plot(column.index, column.values, linewidth=2.0, color=colormap[col], alpha=0.8)
         values = column.iloc[::2]
+        # ax.plot(column.index, column.values, linewidth=2.0, color=colormap[col], alpha=0.8)
+        ax.plot(values.index, values.values, linewidth=2.0, color=colormap[col], alpha=0.8)
         x = values.index
         ax.scatter(values.index, values.values, linewidth=2.0,  marker=markermap[col], color=colormap[col],
                    alpha=0.8, label=col, s=50)
@@ -407,8 +430,9 @@ def plot_acc_multidir(dataset="mnist-mod3", modelname="rwll", resultsdir="result
     for col in df:
 #         df[col].plot(ax=ax, title=title, linewidth=2.0,  marker=markermap[col], color=colormap[col], alpha=0.8)
         column = df[col]
-        ax.plot(column.index, column.values, linewidth=2.0, color=colormap[col], alpha=0.8)
         values = column.iloc[::2]
+        # ax.plot(column.index, column.values, linewidth=2.0, color=colormap[col], alpha=0.8)
+        ax.plot(values.index, values.values, linewidth=2.0, color=colormap[col], alpha=0.8)
         x = values.index
         ax.scatter(values.index, values.values, linewidth=2.0,  marker=markermap[col],color=colormap[col],
                    alpha=0.8, label=col)
@@ -435,8 +459,9 @@ def plot_acc_multidir(dataset="mnist-mod3", modelname="rwll", resultsdir="result
 
         for col in df:
             column = df[col]
-            ax.plot(column.index, column.values, linewidth=2.0, color=colormap[col], alpha=0.8)
             values = column.iloc[::2]
+            # ax.plot(column.index, column.values, linewidth=2.0, color=colormap[col], alpha=0.8)
+            ax.plot(values.index, values.values, linewidth=2.0, color=colormap[col], alpha=0.8)
             x = values.index
             ax.scatter(values.index, values.values, linewidth=2.0,  marker=markermap[col], color=colormap[col],
                        alpha=0.8, label=col)
@@ -574,8 +599,9 @@ def plot_cluster_exploration_multidir(dataset="mnist", problem="mod3", resultsdi
     for col in df:
 #         df[col].plot(ax=ax, title=title, linewidth=2.0,  marker=markermap[col], color=colormap[col], alpha=0.8)
         column = df[col]
-        ax.plot(column.index, column.values, linewidth=2.0, color=colormap[col], alpha=0.8)
         values = column.iloc[::2]
+        # ax.plot(column.index, column.values, linewidth=2.0, color=colormap[col], alpha=0.8)
+        ax.plot(values.index, values.values, linewidth=2.0, color=colormap[col], alpha=0.8)
         x = values.index
         ax.scatter(values.index, values.values, linewidth=2.0,  marker=markermap[col], color=colormap[col],
                    alpha=0.8, label=col, s=50)
@@ -631,8 +657,9 @@ def plot_cluster_exploration_multidir(dataset="mnist", problem="mod3", resultsdi
 
         for col in df:
             column = df[col]
-            ax.plot(column.index, column.values, linewidth=2.0, color=colormap[col],alpha=0.8)
             values = column.iloc[::2]
+            # ax.plot(column.index, column.values, linewidth=2.0, color=colormap[col], alpha=0.8)
+            ax.plot(values.index, values.values, linewidth=2.0, color=colormap[col], alpha=0.8)
             x = values.index
             ax.scatter(values.index, values.values, linewidth=2.0,  marker=markermap[col],  color=colormap[col],
                        alpha=0.8, label=col, s=50)

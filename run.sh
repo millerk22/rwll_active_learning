@@ -1,14 +1,14 @@
-python test_al_gl.py --dataset mnist-mod3 --K 20 --config config.yaml --resultsdir results 
-python accuracy_al_gl.py --dataset mnist-mod3 --config config.yaml --resultsdir results
-python compile_summary.py --dataset mnist-mod3 --resultsdir results
+# python test_al_gl.py --dataset mnist-mod3 --K 20 --config config.yaml --resultsdir results 
+# python accuracy_al_gl.py --dataset mnist-mod3 --config config.yaml --resultsdir results
+# python compile_summary.py --dataset mnist-mod3 --resultsdir results
 
-python test_al_gl.py --dataset fashionmnist-mod3 --K 20 --config config.yaml --resultsdir results 
-python accuracy_al_gl.py --dataset fashionmnist-mod3 --config config.yaml --resultsdir results
-python compile_summary.py --dataset fashionmnist-mod3 --resultsdir results
+# python test_al_gl.py --dataset fashionmnist-mod3 --K 20 --config config.yaml --resultsdir results 
+# python accuracy_al_gl.py --dataset fashionmnist-mod3 --config config.yaml --resultsdir results
+# python compile_summary.py --dataset fashionmnist-mod3 --resultsdir results
 
-python test_al_gl.py --dataset emnist-mod5 --iters 400 --K 94 --config config.yaml --resultsdir results 
-python accuracy_al_gl.py --dataset emnist-mod5 --iters 400 --config config.yaml --resultsdir results
-python compile_summary.py --dataset emnist-mod5 --iters 400 --resultsdir results
+# python test_al_gl.py --dataset emnist-mod5 --iters 400 --K 94 --config config.yaml --resultsdir results 
+# python accuracy_al_gl.py --dataset emnist-mod5 --iters 400 --config config.yaml --resultsdir results
+# python compile_summary.py --dataset emnist-mod5 --iters 400 --resultsdir results
 
 
 # python test_al_gl.py --dataset box --metric raw --K 8 --config config.yaml --resultsdir results 
@@ -35,10 +35,10 @@ python compile_summary.py --dataset emnist-mod5 --iters 400 --resultsdir results
 
 
 
-## Isolet test -- we include "laplace" learning model for accuracy comparison to original
-# python test_al_gl_isolet.py --dataset isolet --metric raw --K 50 --config config_isolet.yaml --resultsdir results 
-# python accuracy_al_gl_isolet.py --dataset isolet --metric raw --config config_isolet.yaml --resultsdir results
-# python compile_summary.py --dataset isolet --resultsdir results
+# Isolet test -- we include "laplace" learning model for accuracy comparison to original
+python test_al_gl_isolet.py --dataset isolet --metric raw --K 50 --config config_isolet.yaml --resultsdir results 
+python accuracy_al_gl_isolet.py --dataset isolet --metric raw --config config_isolet.yaml --resultsdir results
+python compile_summary.py --dataset isolet --resultsdir results
 
 
 ## VOpt and SigmaOpt tests with "full" computations on random subsets of unlabeled data 

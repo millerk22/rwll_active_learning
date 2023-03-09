@@ -174,6 +174,7 @@ if __name__ == "__main__":
     parser.add_argument("--resultsdir", type=str, default="results")
     parser.add_argument("--config", type=str, default="./config.yaml")
     parser.add_argument("--K", type=int, default=0)
+    parser.add_argument("--knn", type=int, default=0)
     args = parser.parse_args()
 
     # load in configuration file
@@ -186,7 +187,7 @@ if __name__ == "__main__":
     
     else:
         print("Loading in Graph...")
-        G, labels, trainset, _, K = load_graph(args.dataset, args.metric, None, returnK=True)
+        G, labels, trainset, _, K = load_graph(args.dataset, args.metric, None, returnK=True, knn=args.knn)
     
         # convert graph to networkx, use just 0,1 edge weights
         A = G.adjacency().astype(int)

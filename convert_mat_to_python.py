@@ -40,11 +40,14 @@ if __name__ == "__main__":
     parser.add_argument("--matlabdir", type=str, default="data_matlab")
     parser.add_argument("--n", type=int, default=100, help="how many total choices to include")
     parser.add_argument("--save_acc", type=int, default=0, help="bool flag. If 1, then try to record the accuracy of choices in the native SSL model (e.g. LAND)")
+    parser.add_argument("--only", type=str, default="", help="specify dataset to only unload")
     args = parser.parse_args()
     
     
-    
-    dirnames = glob(os.path.join(args.matlabdir, "*"))
+    if args.only != "":
+        dirnames = glob(os.path.join(args.matlabdir, args.only))
+    else:
+        dirnames = glob(os.path.join(args.matlabdir, "*"))
     for dirname in dirnames:
         print(dirname)
         summary_dirs_land, summary_dirs_cal = [], []

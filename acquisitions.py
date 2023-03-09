@@ -97,6 +97,17 @@ class voptfull(acquisition_function):
         vopt_values /= active_learning.fullC[active_learning.candidate_inds, active_learning.candidate_inds].flatten()
         return vopt_values
 
+class soptfull(acquisition_function):
+    '''
+    FULL Sigma opt, uses L^{-1}
+    '''
+        
+    def compute_values(self, active_learning, u):
+        assert hasattr(active_learning, "fullC")
+        sopt_values = np.sum(active_learning.fullC[:, active_learning.candidate_inds], axis=0)
+        sopt_values /= np.sqrt(active_learning.fullC[active_learning.candidate_inds, active_learning.candidate_inds].flatten())
+        return sopt_values
+
 class uncnormprop_OLD(acquisition_function):
     '''
     Sample proportional to the acquisition function's values.
@@ -206,6 +217,7 @@ ACQS = {'unc': uncertainty_sampling(),
         'vopt1':v_opt(),
         'sopt':sigma_opt(),
         'voptfull':voptfull(),
+        'soptfull':soptfull(),
         'mc':model_change(),
         'mc1':model_change(),
         'mcvopt':model_change_vopt(),

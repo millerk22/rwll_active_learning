@@ -27,15 +27,16 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=str, default="./config_isolet.yaml")
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--resultsdir", type=str, default="results_isolet")
+    parser.add_argument("--knn", type=int, default=0)
     args = parser.parse_args()
 
     # load in configuration file
     with open(args.config, 'r') as f:
         config = yaml.safe_load(f)
 
-    G, labels, trainset, normalization = load_graph(args.dataset, args.metric, numeigs=None) # don't compute any eigenvalues
+    G, labels, trainset, normalization = load_graph(args.dataset, args.metric, numeigs=None, knn=args.knn) # don't compute any eigenvalues
     model_names = [name for name in config["acc_models"] if name[:3] != "gcn"]
-    models = get_models(G, model_names)
+    models = get_models(G, model_names, normalization=normalization)
     models_dict = {name:model for name, model in zip(model_names, models)}
     results_directories = glob(os.path.join(args.resultsdir, f"{args.dataset}_results_*_{args.iters}/"))
     acqs_models = config["acqs_models"]

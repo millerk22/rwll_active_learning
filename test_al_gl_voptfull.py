@@ -19,28 +19,6 @@ from acquisitions import ACQS
 from joblib import Parallel, delayed
 
 
-
-def get_graph_and_models(acq_funcs_names, model_names, args):
-    # Determine if we need to calculate more eigenvectors/values for mc, vopt, mcvopt acquisitions
-    maxnumeigs = 0
-    for acq_func_name in acq_funcs_names:
-        if len(acq_func_name.split("-")) == 1:
-            continue
-        d = acq_func_name.split("-")[-1]
-        if len(d) > 0:
-            if maxnumeigs < int(d):
-                maxnumeigs = int(d)
-    if maxnumeigs == 0:
-        maxnumeigs = None
-
-    # Load in the graph and labels
-    print("Loading in Graph...")
-    G, labels, trainset, normalization, K = load_graph(args.dataset, args.metric, maxnumeigs, returnK=True)
-    models = get_models(G, model_names)
-    
-    return G, labels, trainset, normalization, models, K
-
-
 def solve_vopt_subset(L, train_ind, candidate_set, sopt=False):
     n = L.shape[0]
 
@@ -77,7 +55,7 @@ def solve_vopt_subset(L, train_ind, candidate_set, sopt=False):
     
 
 if __name__ == "__main__":
-    parser = ArgumentParser(description="Run Large Tests in Parallel of Active Learning Test for Graph Learning")
+    parser = ArgumentParser(description="Run Large Tests in Parallel of Active Learning Test for Graph Learning performing VOpt/SOpt full on subset.")
     parser.add_argument("--dataset", type=str, default='mnist-mod3')
     parser.add_argument("--metric", type=str, default='vae')
     parser.add_argument("--numcores", type=int, default=7)
@@ -86,6 +64,7 @@ if __name__ == "__main__":
     parser.add_argument("--gamma", type=float, default=0.1)
     parser.add_argument("--resultsdir", type=str, default="results")
     parser.add_argument("--sopt", type=int, default=0)
+    parser.add_argument("--knn", type=int, default=0)
     args = parser.parse_args()
 
     # load in configuration file

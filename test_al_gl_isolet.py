@@ -20,53 +20,6 @@ from joblib import Parallel, delayed
 
 
 
-def get_active_learner(acq_func_name, G, labels, labeled_ind, normalization, args):
-    """
-        Based on the acquisition function name, determine if need to compute the covariance matrix for instantiating 
-        active_learner object
-    """
-    if acq_func_name.split("-")[0] in ["mc", "mcvopt", "vopt", "vopt1"]:
-        print(f"gamma = {args.gamma}")
-        active_learner = get_active_learner_eig(deepcopy(G), labeled_ind.copy(), labels, acq_func_name, 
-                                                gamma=args.gamma, normalization=normalization)
-
-    else:
-        active_learner = gl.active_learning.active_learning(deepcopy(G), labeled_ind.copy(), 
-                                                            labels[labeled_ind], eval_cutoff=None)
-        
-        # special case of needing to calculate FULL covariance matrix for voptfull
-        if acq_func_name == "voptfull":
-            print("Calculating fullC")
-            active_learner.fullC = sparse.linalg.inv(sparse.csc_matrix(G.laplacian() + 
-                                                                       0.001*sparse.eye(G.num_nodes))).toarray()
-    
-    return active_learner
-
-
-def get_graph_and_models(acq_funcs_names, model_names, args):
-    # Determine if we need to calculate more eigenvectors/values for mc, vopt, mcvopt acquisitions
-    maxnumeigs = 0
-    for acq_func_name in acq_funcs_names:
-#         if acq_func_name in ["mc", "mcvopt", "vopt", "vopt1"]:
-#             maxnumeigs = max(maxnumeigs, 50)
-            
-        if len(acq_func_name.split("-")) == 1:
-            continue
-        d = acq_func_name.split("-")[-1]
-        if len(d) > 0:
-            if maxnumeigs < int(d):
-                maxnumeigs = int(d)
-    if maxnumeigs == 0:
-        maxnumeigs = None
-
-    # Load in the graph and labels
-    print("Loading in Graph...")
-    G, labels, trainset, normalization, K = load_graph(args.dataset, args.metric, maxnumeigs, returnK=True)
-    models = get_models(G, model_names)
-    
-    return G, labels, trainset, normalization, models, K
-
-
 if __name__ == "__main__":
     parser = ArgumentParser(description="Run Large Tests in Parallel of Active Learning Test for Graph Learning on Isolet")
     parser.add_argument("--dataset", type=str, default='isolet')
@@ -78,6 +31,7 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=str, default="./config.yaml")
     parser.add_argument("--K", type=int, default=0)
     parser.add_argument("--cheatK", type=int, default=50)
+    parser.add_argument("--knn", type=int, default=0)
     args = parser.parse_args()
 
     # load in configuration file
@@ -183,7 +137,7 @@ if __name__ == "__main__":
                 query_inds = active_learner.select_query_points(acq_func, u)
                 active_learner.update_labeled_data(query_inds, labels[query_inds])
                 
-                if acq_func_name == 'voptfull': 
+                if acq_func_name in ['voptfull', 'soptfull']: 
                     # update of "full" covariance matrix not currently in gl.active_learning
                     for idx in query_inds:
                         active_learner.fullC -= np.outer(active_learner.fullC[:,idx], 
