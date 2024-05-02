@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 import pandas as pd
 
 
-run2seed = {0:2, 1:3, 2:5, 3:6, 4:15, 5:16, 6:29, 7:30, 8:49, 9:50}
+run2seed = {0:2, 1:3, 2:5, 3:6, 4:15, 5:16, 6:29, 7:30, 8:49, 9:50} # the seeds we chose for the experiments
 
 
 
@@ -26,6 +26,8 @@ def save_results(summary_dirs, suff="land"):
         df = pd.DataFrame.from_dict(columns)
         print(df.head())
         overall_dir = summary_dirs[0].split("_results_")[-2] + "_overall_" + str(args.n)
+        if not os.path.exists(overall_dir):
+            os.makedirs(overall_dir)
         df.to_csv(os.path.join(overall_dir, f"acc_{suff}.csv"))
     else:
         print(f"summary dirs is empty for suff = {suff}, skipping...")

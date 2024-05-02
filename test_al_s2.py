@@ -13,7 +13,6 @@ from glob import glob
 from scipy.special import softmax
 from functools import reduce
 from utils import *
-from acquisitions import ACQS
 import networkx as nx
 from heapq import *
 from itertools import product

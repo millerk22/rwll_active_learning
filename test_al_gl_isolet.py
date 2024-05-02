@@ -13,7 +13,6 @@ from glob import glob
 from scipy.special import softmax
 from functools import reduce
 from utils import *
-from acquisitions import ACQS
 
 
 from joblib import Parallel, delayed
@@ -24,7 +23,7 @@ if __name__ == "__main__":
     parser = ArgumentParser(description="Run Large Tests in Parallel of Active Learning Test for Graph Learning on Isolet")
     parser.add_argument("--dataset", type=str, default='isolet')
     parser.add_argument("--metric", type=str, default='raw')
-    parser.add_argument("--numcores", type=int, default=9)
+    parser.add_argument("--numcores", type=int, default=5)
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--gamma", type=float, default=0.1)
     parser.add_argument("--resultsdir", type=str, default="results_isolet")
@@ -40,29 +39,19 @@ if __name__ == "__main__":
 
 
     # Define ssl models and acquisition functions from configuration file
-    ACQS_MODELS = [name for name in config["acqs_models"] if (name.split(" ")[-1][:3] != "gcn" and name.split(" ")[-1][:4] != "LAND")]
+    ACQS_MODELS = [name for name in config["acqs_models"] if name.split(" ")[-1][:4] != "LAND"]
     acq_funcs_names = [name.split(" ")[0] for name in ACQS_MODELS]
-    acq_funcs = [ACQS[name.split("-")[0]] for name in acq_funcs_names]
-    
-    
     
 
     # load in graph and models that will be used in this run of tests
     model_names = [name.split(" ")[1] for name in ACQS_MODELS]
-    G, labels, trainset, normalization, models, K = get_graph_and_models(acq_funcs_names, model_names, args)
+    models, labels, trainset, normalization, K = get_graph_and_models(acq_funcs_names, model_names, args)
     
     # if manually pass in K value in command line then overwrite value of K
     if args.K != 0:
         K = args.K
     else:
         K = np.unique(labels).size * 5
-    
-    # If have a proportional sampling acquisition function then set K accordingly
-    for i, name in enumerate(acq_funcs_names):
-        if "prop" in name:
-            print(name)
-            acq_funcs[i].set_K(K)
-    
      
     
     # use only enough cores as length of models
@@ -80,8 +69,10 @@ if __name__ == "__main__":
     # Iterations for the different tests
     for it, seed in enumerate(seeds):
         # get initially labeled indices, based on the given seed
-        labeled_ind = np.array([np.random.choice(np.arange(G.num_nodes))]) #gl.trainsets.generate(labels, rate=1, seed=seed)
-
+        labeled_ind = gl.trainsets.generate(labels, rate=1, seed=seed)[:2]
+        # because of gl.ssl implementation, we need to sequentially change the corresponding values of labels to keep the given labels 0, 1, ..., k-1 to gl.ssl
+        labels_map = {labels[idx] : i for i, idx in enumerate(labeled_ind)}
+        
         # define the results directory for this seed's test
         RESULTS_DIR = os.path.join(args.resultsdir, f"{args.dataset}_results_{seed}_{args.iters}")
         if not os.path.exists(RESULTS_DIR):
@@ -89,11 +80,11 @@ if __name__ == "__main__":
         np.save(os.path.join(RESULTS_DIR, "init_labeled.npy"), labeled_ind) # save initially labeled points that are common to each test
 
 
-        def active_learning_test(acq_func_name, acq_func, model_name, model):
+        def active_learning_test(acq_func_name, model_name, model):
             '''
             Active learning test definition for parallelization.
             '''
-
+            
             # check if test already completed previously
             choices_run_savename = os.path.join(RESULTS_DIR, f"choices_{acq_func_name}_{model_name}.npy")
             if os.path.exists(choices_run_savename):
@@ -101,48 +92,51 @@ if __name__ == "__main__":
                 return
             
             # if need to decay tau, calculate mu from epsilon and 2K. K = # of clusters.
-            if "decaytau" in acq_func_name or "switchK" in acq_func_name:
+            if "decaytau" in acq_func_name in acq_func_name:
                 eps = 1e-9
                 mu = (eps / model.tau)**(.5/K)
             
             # fetch active_learning object
-            active_learner = get_active_learner(acq_func_name, G, labels, labeled_ind, normalization, args)
-            
-            # restrict training set (and subsequently the candidate set) to non-outliers, as determined by a KDE estimator
+            labels_test = np.array([labels_map[labels[idx]] for idx in labeled_ind])
+            AL = get_active_learner(acq_func_name, model, labeled_ind, labels_test, normalization, args)
+            # If have a proportional sampling acquisition function then set K accordingly
+            if "prop" in acq_func_name:
+                AL.acq_function.set_K(K)
+
+
+            # restrict candidate set to non-outliers, as determined by a KDE estimator
+            if trainset is None:
+                candidate_ind_all = np.arange(model.graph.num_nodes)
+            else:
+                candidate_ind_all = trainset.copy()
+                
             if acq_func_name[-3:] == 'kde':
                 knn_ind, knn_dist = gl.weightmatrix.load_knn_data(args.dataset.split("-")[0], metric=args.metric)
                 d = np.max(knn_dist,axis=1)
                 kde = (d/d.max())**(-1)
-                outlier_inds = np.where(kde > np.percentile(kde, 90))[0] # throw out 10% of "outliers"
-                active_learner.training_set = np.setdiff1d(active_learner.training_set, outlier_inds)
-                print(f"Set training_set for active learner of {acq_func_name} to throw out outliers")
+                outlier_inds = np.where(kde < np.percentile(kde, 10))[0] # throw out 10% of "outliers"
+                candidate_ind_all = np.setdiff1d(candidate_ind_all, outlier_inds)
+                print(f"Set candidate_ind for active learner of {acq_func_name} to throw out outliers")
             
-            print(f"{acq_func_name}, training_set size = {active_learner.training_set.size}, dataset size = {G.num_nodes}")
-                
+            print(f"{acq_func_name}, training_set size = {candidate_ind_all.size}, dataset size = {model.graph.num_nodes}")
 
             # Calculate initial accuracy
-            seen_labels = np.sort(np.unique(active_learner.current_labels))
-            zeroed_curr_labels = np.zeros_like(active_learner.current_labels)
-            for k, c in enumerate(seen_labels):
-                 zeroed_curr_labels[np.where(active_learner.current_labels == c)] = k
-            u_sub = model.fit(active_learner.current_labeled_set, zeroed_curr_labels)
-            u = np.zeros((G.num_nodes, np.unique(labels).size))
-            u[:, seen_labels] = u_sub
-            acc = np.array([gl.ssl.ssl_accuracy(np.argmax(u, axis=1), labels, active_learner.current_labeled_set.size)])
+            u_sub = AL.u
+            u = np.zeros((model.graph.num_nodes, np.unique(labels).size))
+            sorted_keys = np.array([t[0] for t in sorted(labels_map.items(), key=lambda a: a[1])]) 
+            u[:,sorted_keys] = u_sub
+            acc = np.array([gl.ssl.ssl_accuracy(np.argmax(u, axis=1), labels, AL.labeled_ind)])
             
             
             # Perform active learning iterations
             for j in tqdm(range(args.iters), desc=f"{args.dataset}, {acq_func_name} test {it+1}/{len(seeds)}, seed = {seed}"):
-                # should handle oracle update inside object
-                query_inds = active_learner.select_query_points(acq_func, u)
-                active_learner.update_labeled_data(query_inds, labels[query_inds])
-                
-                if acq_func_name in ['voptfull', 'soptfull']: 
-                    # update of "full" covariance matrix not currently in gl.active_learning
-                    for idx in query_inds:
-                        active_learner.fullC -= np.outer(active_learner.fullC[:,idx], 
-                                                             active_learner.fullC[:,idx])/active_learner.fullC[idx, idx] 
-
+                query_point = AL.select_queries(candidate_ind=np.setdiff1d(candidate_ind_all, AL.labeled_ind))[0] # return this iteration's newly chosen points
+                # have to handle to computation of gl.ssl differently because in Isolet we don't have a
+                max_label_seen_so_far = max(AL.labels)
+                if not labels[query_point] in labels_map:
+                    labels_map[labels[query_point]] = max_label_seen_so_far + 1
+                query_label = labels_map[labels[query_point]]
+                AL.update([query_point], [query_label]) # update the active_learning object's labeled set
                 
                 # if need to decay tau in the model, then do so before updating the model
                 if "decaytau" in acq_func_name:
@@ -150,34 +144,22 @@ if __name__ == "__main__":
                         model.tau = mu*np.copy(model.tau)
                         if model.tau[0] < eps:
                             model.tau = np.zeros_like(model.tau)
-                elif "switchK" in acq_func_name:
-                    if "switchKcheat" in acq_func_name:
-                        if j == args.cheatK:
-                            model.tau = np.zeros_like(model.tau)
-                    else:
-                        if j == K:
-                            model.tau = np.zeros_like(model.tau)
-                        
-                            
                     
-                # model update
-                seen_labels = np.sort(np.unique(active_learner.current_labels))
-                zeroed_curr_labels = np.zeros_like(active_learner.current_labels)
-                for k, c in enumerate(seen_labels):
-                     zeroed_curr_labels[np.where(active_learner.current_labels == c)] = k
-                u_sub = model.fit(active_learner.current_labeled_set, zeroed_curr_labels)
-                u = np.zeros((G.num_nodes, np.unique(labels).size))
-                u[:, seen_labels] = u_sub
-                acc = np.append(acc, gl.ssl.ssl_accuracy(np.argmax(u, axis=1), labels, active_learner.current_labeled_set.size))
-
+                # model update -- special for Isolet
+                u_sub = AL.u
+                u = np.zeros((model.graph.num_nodes, np.unique(labels).size))
+                sorted_keys = np.array([t[0] for t in sorted(labels_map.items(), key=lambda a: a[1])]) 
+                u[:,sorted_keys] = u_sub
+                acc = np.append(acc, gl.ssl.ssl_accuracy(np.argmax(u, axis=1), labels, AL.labeled_ind))
+                
             acc_dir = os.path.join(RESULTS_DIR, model_name)
             if not os.path.exists(acc_dir):
                 os.makedirs(acc_dir)
             np.save(os.path.join(acc_dir, f"acc_{acq_func_name}_{model_name}.npy"), acc)
-            np.save(os.path.join(RESULTS_DIR, f"choices_{acq_func_name}_{model_name}.npy"), active_learner.current_labeled_set)
+            np.save(os.path.join(RESULTS_DIR, f"choices_{acq_func_name}_{model_name}.npy"), AL.labeled_ind)
             return
 
         print("------Starting Active Learning Tests-------")
 
-        Parallel(n_jobs=args.numcores)(delayed(active_learning_test)(acq_name, acq, mdlname, mdl) for acq_name, acq, mdlname, mdl \
-                in zip(acq_funcs_names, acq_funcs, model_names, models))
+        Parallel(n_jobs=args.numcores)(delayed(active_learning_test)(acq_name, mdlname, mdl) for acq_name, mdlname, mdl \
+                in zip(acq_funcs_names, model_names, models))
