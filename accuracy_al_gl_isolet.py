@@ -13,7 +13,6 @@ from glob import glob
 from scipy.special import softmax
 from functools import reduce
 from utils import *
-from acquisitions import ACQS
 
 from joblib import Parallel, delayed
 
@@ -23,7 +22,7 @@ if __name__ == "__main__":
     parser = ArgumentParser(description="Compute Accuracies in Parallel of Active Learning Tests for Graph Learning on Isolet")
     parser.add_argument("--dataset", type=str, default='isolet')
     parser.add_argument("--metric", type=str, default='vae')
-    parser.add_argument("--numcores", type=int, default=9)
+    parser.add_argument("--numcores", type=int, default=5)
     parser.add_argument("--config", type=str, default="./config_isolet.yaml")
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--resultsdir", type=str, default="results_isolet")
@@ -35,8 +34,8 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
 
     G, labels, trainset, normalization = load_graph(args.dataset, args.metric, numeigs=None, knn=args.knn) # don't compute any eigenvalues
-    model_names = [name for name in config["acc_models"] if name[:3] != "gcn"]
-    models = get_models(G, model_names, normalization=normalization)
+    model_names = [name for name in config["acc_models"]]
+    models = get_models(G, model_names)
     models_dict = {name:model for name, model in zip(model_names, models)}
     results_directories = glob(os.path.join(args.resultsdir, f"{args.dataset}_results_*_{args.iters}/"))
     acqs_models = config["acqs_models"]
@@ -84,7 +83,7 @@ if __name__ == "__main__":
                     u_sub = model.fit(train_ind, zeroed_curr_labels)
                     u = np.zeros((G.num_nodes, np.unique(labels).size))
                     u[:, seen_labels] = u_sub
-                    acc = np.append(acc, gl.ssl.ssl_accuracy(np.argmax(u, axis=1), labels, train_ind.size))
+                    acc = np.append(acc, gl.ssl.ssl_accuracy(np.argmax(u, axis=1), labels, train_ind))
 
                 # save accuracy results to corresponding filename
                 np.save(acc_fname, acc)

@@ -13,7 +13,6 @@ from glob import glob
 from scipy.special import softmax
 from functools import reduce
 from utils import *
-from acquisitions import ACQS
 
 
 from joblib import Parallel, delayed
@@ -58,7 +57,7 @@ if __name__ == "__main__":
     parser = ArgumentParser(description="Run Large Tests in Parallel of Active Learning Test for Graph Learning performing VOpt/SOpt full on subset.")
     parser.add_argument("--dataset", type=str, default='mnist-mod3')
     parser.add_argument("--metric", type=str, default='vae')
-    parser.add_argument("--numcores", type=int, default=7)
+    parser.add_argument("--numcores", type=int, default=5)
     parser.add_argument("--config", type=str, default="./config.yaml")
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--gamma", type=float, default=0.1)
@@ -72,13 +71,16 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
     
     
-
     # load in graph and models that will be used in this run of tests
-    model_names = ["rwll"]
-    acq_funcs_names = ["voptfull"]
+    model_names = ["rwll0010"]
+    acq_funcs_names = ["voptfull"] 
+    if args.sopt:
+        acq_funcs_names = ["soptfull"]
         
-    G, labels, trainset, normalization, models, K = get_graph_and_models(acq_funcs_names, model_names, args)
+    models, labels, trainset, normalization, K = get_graph_and_models(acq_funcs_names, model_names, args)
 
+    if trainset is not None:
+        print("test_al_gl_voptfull.py not implemented to handle a trainset isn't the full dataset")
 
     # define the seed set for the iterations. Allows for defining in the configuration file
     try:
@@ -102,51 +104,45 @@ if __name__ == "__main__":
         v_or_s = "v" 
         if sopt_flag: 
             v_or_s = "s"
-            
-        # get initially labeled indices, based on the given seed
-        labeled_ind = gl.trainsets.generate(labels, rate=1, seed=s)
         
         
         RESULTS_DIR = os.path.join(args.resultsdir, f"{args.dataset}_results_{s}_{args.iters}")
         if not os.path.exists(RESULTS_DIR):
             os.makedirs(RESULTS_DIR)
-        np.save(os.path.join(RESULTS_DIR, "init_labeled.npy"), labeled_ind) # save initially labeled points that are common to each test
+            # get initially labeled indices, based on the given seed
+            labeled_ind = gl.trainsets.generate(labels, rate=1, seed=s)
+            np.save(os.path.join(RESULTS_DIR, "init_labeled.npy"), labeled_ind) # save initially labeled points that are common to each test
+            
+        else: # if other tests already exist, use their labeled_ind
+            labeled_ind = np.load(os.path.join(RESULTS_DIR, "init_labeled.npy"))
         
         # check if test already completed previously
         choices_run_savename = os.path.join(RESULTS_DIR, f"choices_{v_or_s}optfull_{model_name}.npy")
         if os.path.exists(choices_run_savename):
             print(f"Found choices for {v_or_s}optfull in {model_name}")
             return
-        
-        
-
-        # define the results directory for this seed's test
-        RESULTS_DIR = os.path.join(args.resultsdir, f"{args.dataset}_results_{s}_{args.iters}")
-        if not os.path.exists(RESULTS_DIR):
-            os.makedirs(RESULTS_DIR)
             
-        np.save(os.path.join(RESULTS_DIR, "init_labeled.npy"), labeled_ind) # save initially labeled points that are common to each test
-
         # Calculate initial accuracy
         current_inds = labeled_ind.copy()
+        ninit = labeled_ind.size
         current_labels = labels[current_inds]
         u = model.fit(current_inds, current_labels)
-        acc = np.array([gl.ssl.ssl_accuracy(model.predict(), labels, current_inds.size)])
+        acc = np.array([gl.ssl.ssl_accuracy(model.predict(), labels, current_inds)])
 
 
         # Perform active learning iterations
-        for j in tqdm(range(args.iters), desc=f"{args.dataset}, {v_or_s}optfull test, seed = {s}"):
+        for j in tqdm(range(ninit-1, args.iters), desc=f"{args.dataset}, {v_or_s}optfull test, seed = {s}"):
             # take random sample 
-            unlabeled_inds = np.delete(np.arange(G.num_nodes), current_inds)
+            unlabeled_inds = np.delete(np.arange(model.graph.num_nodes), current_inds)
             candidate_set = np.random.choice(unlabeled_inds, 500, replace=False)
-            query_inds = solve_vopt_subset(G.laplacian(), current_inds, candidate_set, sopt=sopt_flag)
+            query_inds = solve_vopt_subset(model.graph.laplacian(), current_inds, candidate_set, sopt=sopt_flag)
             current_inds = np.append(current_inds, query_inds)
             current_labels = np.append(current_labels, labels[query_inds])
 
 
             # model update
             u = model.fit(current_inds, current_labels)
-            acc = np.append(acc, gl.ssl.ssl_accuracy(model.predict(), labels, current_inds.size))
+            acc = np.append(acc, gl.ssl.ssl_accuracy(model.predict(), labels, current_inds))
 
         acc_dir = os.path.join(RESULTS_DIR, model_name)
         if not os.path.exists(acc_dir):

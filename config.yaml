@@ -1,23 +1,17 @@
 acqs_models:
   - "unc rwll"
-  - "unc rwll0010"
-  - "uncnorm rwll"
   - "uncnorm rwll0010"
   - "uncnormdecaytau rwll0010"
   - "uncnormprop++decaytau rwll0010"
   - "uncnormprop++ rwll0010"
   - "uncnormdecaytaukde rwll0010"
   - "vopt rwll0010"
-  - "sopt rwll0010"
-#   - "voptfull rwll0010"
-#   - "soptfull rwll0010"
-#   - "voptfull laplace"
   - "mcvopt rwll"
-  - "random rwll"
+  - "random rwll0010"
 
 acc_models:
   - "rwll"
   - "rwll0010"
-#   - "laplace"
 
-seeds: [2, 3, 5, 6, 15, 16, 29, 30, 49, 50]
+# seeds: [2, 3, 5, 6, 15, 16, 29, 30, 49, 50]
+seeds: [2, 3]
