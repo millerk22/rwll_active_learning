@@ -20,8 +20,8 @@ Except for the similarity graphs for MNIST, FASHIONMNIST, and EMNIST datasets, w
 
 For example, to perform the ``Box`` experiment one would run the following:
 ```
-python test_al_gl.py --dataset box --config config.yaml --resultsdir results
-python accuracy_al_gl.py --dataset box --config config.yaml --resultsdir results
+python test_al_gl.py --dataset box --config config.yaml --resultsdir results --metric raw
+python accuracy_al_gl.py --dataset box --config config.yaml --resultsdir results --metric raw
 python compile_summary.py --dataset box --resultsdir results
 ```
 
