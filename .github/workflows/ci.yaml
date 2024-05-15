@@ -27,4 +27,4 @@ jobs:
         if [ -f requirements.linux.txt ]; then pip install -r requirements.linux.txt; fi
     - name: Test with pytest
       run: |
-        python -m pytest
+        python -m unittest
