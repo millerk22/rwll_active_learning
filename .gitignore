@@ -1,2 +1,5 @@
 *.ipynb*
 results*/
+
+__pycache__
+.venv
