@@ -3,3 +3,5 @@ results*/
 
 __pycache__
 .venv
+knn_data/
+data/box_*
