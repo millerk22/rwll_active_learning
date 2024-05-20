@@ -17,8 +17,7 @@ def get_models(G, model_names):
 
     return [deepcopy(MODELS[name]) for name in model_names]
 
-
-def load_graph(dataset, metric, numeigs=200, data_dir="data", returnX=False, returnK=False, knn=0):
+def create_graph(dataset, metric, numeigs=200, data_dir="data", returnX = False, returnK = False, knn=0):
     X, clusters = gl.datasets.load(dataset.split("-")[0], metric=metric)
     if dataset.split("-")[-1] == 'evenodd':
         labels = clusters % 2
@@ -86,11 +85,31 @@ def load_graph(dataset, metric, numeigs=200, data_dir="data", returnX=False, ret
 
     G.save(graph_filename)
     
+
+    auxillary = None
     if returnX:
-        return G, labels, trainset, normalization, X
-    
+        auxillary = X
     if returnK:
-        return G, labels, trainset, normalization, np.unique(clusters).size
+        auxillary = np.unique(labels).size
+
+    return G, labels, trainset, normalization, auxillary
+
+
+def load_graph(dataset, metric, numeigs=200, data_dir="data", returnX=False, returnK=False, knn=0):
+
+    if dataset in ['polbooks']:
+        G = gl.datasets.load_graph(dataset)
+        labels = G.labels
+        trainset = None
+        normalization = "combinatorial"
+        auxillary = None
+        if returnK:
+            auxillary = np.unique(labels).size
+    else:
+        G, labels, trainset, normalization, auxillary = create_graph(dataset, metric, numeigs, data_dir, returnX, returnK, knn)
+    
+    if returnX or returnK:
+        return G, labels, trainset, normalization, auxillary
     
     return G, labels, trainset, normalization
 
