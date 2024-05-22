@@ -13,6 +13,8 @@ from glob import glob
 from scipy.special import softmax
 from functools import reduce
 from utils import *
+import logging
+import sys
 
 
 from joblib import Parallel, delayed
@@ -29,7 +31,10 @@ if __name__ == "__main__":
     parser.add_argument("--K", type=int, default=0)
     parser.add_argument("--cheatK", type=int, default=50)
     parser.add_argument("--knn", type=int, default=0)
+    parser.add_argument("--log-level", type=str, default='INFO')
     args = parser.parse_args()
+
+    logging.basicConfig(level=getattr(logging, args.log_level), stream=sys.stdout)
 
     # load in configuration file
     with open(args.config, 'r') as f:

@@ -4,6 +4,7 @@ import numpy as np
 import scipy.sparse as sparse
 from copy import deepcopy
 import acquisitions
+import logging
 
 
 def get_models(G, model_names):
@@ -96,8 +97,8 @@ def create_graph(dataset, metric, numeigs=200, data_dir="data", returnX = False,
 
 
 def load_graph(dataset, metric, numeigs=200, data_dir="data", returnX=False, returnK=False, knn=0):
-
     if dataset in ['polbooks']:
+        logging.debug('Loading graph from graphlearning.datasets')
         G = gl.datasets.load_graph(dataset)
         labels = G.labels
         trainset = None
