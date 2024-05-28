@@ -10,6 +10,25 @@ In addition to standard Python packages ``numpy, scipy, pandas,`` and ``matplotl
 * ``graphlearning``: ``pip install graphlearning``
 * ``tqdm``
 * ``pytorch`` (if looking to train the VAE embeddings for EMNIST locally)
+* `yaml (pip install pyyaml)` to parse the configuration files
+
+A working `requirements.[os].txt` file is available at the root of this repo which can be used to install the dependencies of this project as follows:
+
+## Installation
+
+For the latest python version (`3.12.3`):
+
+```
+cd [project-root]
+# create a virtual env in the directory .venv
+python -m venv .venv 
+
+# activate the virtual environment
+source .venv/bin/activate
+
+# install the dependencies
+pip install -r requirements.[os].txt
+```
 
 ## Experiment organization
 
