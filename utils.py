@@ -100,6 +100,7 @@ def load_graph(dataset, metric, numeigs=200, data_dir="data", returnX=False, ret
     if dataset in ['polbooks']:
         logging.debug('Loading graph from graphlearning.datasets')
         G = gl.datasets.load_graph(dataset)
+        logging.debug(f'Loaded graph, D.shape = {G.degree_matrix().shape}')
         labels = G.labels
         trainset = None
         normalization = "combinatorial"
