@@ -103,10 +103,8 @@ def load_graph(dataset, metric, numeigs=200, data_dir="data", returnX=False, ret
         logging.debug(f'Loaded graph, D.shape = {G.degree_matrix().shape}')
         labels = G.labels
         trainset = None
-        normalization = "combinatorial"
-        auxillary = None
-        if returnK:
-            auxillary = np.unique(labels).size
+        normalization = "normalized"
+        auxillary = np.unique(labels).size
     else:
         G, labels, trainset, normalization, auxillary = create_graph(dataset, metric, numeigs, data_dir, returnX, returnK, knn)
     
@@ -160,6 +158,7 @@ def get_active_learner(acq_func_name, model, labeled_ind, labeled_ind_labels, no
         Based on the acquisition function name, determine if need to compute the covariance matrix for instantiating 
         active_learner object
     """
+    logging.debug(f"Creating active learner for {acq_func_name}")
     if len(acq_func_name.split("-")) > 1:
         numeigs = int(acq_func_name.split("-")[-1])
         
@@ -196,7 +195,7 @@ def get_active_learner(acq_func_name, model, labeled_ind, labeled_ind_labels, no
 
     else:
         acq_func, unc_method = get_unc_acq_func(af_name)
-        AL = gl.active_learning.active_learner(model, acq_func, labeled_ind.copy(), labeled_ind_labels.copy())
+        AL = gl.active_learning.active_learner(model, acq_func, labeled_ind.copy(), labeled_ind_labels.copy(), policy='prop')
     
     return AL
 

@@ -1,8 +1,8 @@
 acqs_models:
   - "unc rwll"
-    #  - "uncnorm rwll0010"
-    #  - "uncnormdecaytau rwll0010"
-    #  - "uncnormprop++decaytau rwll0010"
+  - "uncnorm rwll0010"
+  - "uncnormdecaytau rwll0010"
+  - "uncnormprop++decaytau rwll0010"
     #  - "uncnormprop++ rwll0010"
     #  - "uncnormdecaytaukde rwll0010"
     #  - "vopt rwll0010"

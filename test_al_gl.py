@@ -80,6 +80,8 @@ if __name__ == "__main__":
 
 
         def active_learning_test(acq_func_name, model_name, model):
+
+            logging.basicConfig(level=getattr(logging, args.log_level), stream=sys.stdout)
             '''
             Active learning test definition for parallelization.
             '''
