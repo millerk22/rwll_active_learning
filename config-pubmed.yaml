@@ -3,15 +3,15 @@ acqs_models:
   - "uncnorm rwll0010"
   - "uncnormdecaytau rwll0010"
   - "uncnormprop++decaytau rwll0010"
-  - "uncnormprop++ rwll0010"
-  - "uncnormdecaytaukde rwll0010"
-  - "vopt rwll0010"
-  - "mcvopt rwll"
-  - "random rwll0010"
+    #  - "uncnormprop++ rwll0010"
+    #  - "uncnormdecaytaukde rwll0010"
+    #  - "vopt rwll0010"
+    #  - "mcvopt rwll"
+    #  - "random rwll0010"
 
 acc_models:
   - "rwll"
-  - "rwll0010"
+    #  - "rwll0010"
 
 # seeds: [2, 3, 5, 6, 15, 16, 29, 30, 49, 50]
 seeds: [2, 3]

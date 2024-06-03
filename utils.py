@@ -197,7 +197,7 @@ def get_active_learner(acq_func_name, model, labeled_ind, labeled_ind_labels, no
 
     else:
         acq_func, unc_method = get_unc_acq_func(af_name)
-        AL = gl.active_learning.active_learner(model, acq_func, labeled_ind.copy(), labeled_ind_labels.copy(), policy='prop')
+        AL = gl.active_learning.active_learner(model, acq_func, labeled_ind.copy(), labeled_ind_labels.copy())
     
     return AL
 
