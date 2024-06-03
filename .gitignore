@@ -6,4 +6,5 @@ __pycache__
 knn_data/
 data/box_*
 data/polbooks*
+data/pubmed*
 imgs/
