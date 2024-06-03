@@ -6,6 +6,8 @@ from copy import deepcopy
 import acquisitions
 import logging
 
+GRAPH_DATASETS = ['polbooks', 'pubmed']
+
 
 def get_models(G, model_names):
     MODELS = {'poisson':gl.ssl.poisson(G),  # poisson learning
@@ -97,7 +99,7 @@ def create_graph(dataset, metric, numeigs=200, data_dir="data", returnX = False,
 
 
 def load_graph(dataset, metric, numeigs=200, data_dir="data", returnX=False, returnK=False, knn=0):
-    if dataset in ['polbooks']:
+    if dataset in GRAPH_DATASETS:
         logging.debug('Loading graph from graphlearning.datasets')
         G = gl.datasets.load_graph(dataset)
         logging.debug(f'Loaded graph, D.shape = {G.degree_matrix().shape}')
