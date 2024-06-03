@@ -13,6 +13,7 @@ from glob import glob
 from scipy.special import softmax
 from functools import reduce
 from utils import *
+import logging, sys
 
 from joblib import Parallel, delayed
 
@@ -27,7 +28,10 @@ if __name__ == "__main__":
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--resultsdir", type=str, default="results")
     parser.add_argument("--knn", type=int, default=0)
+    parser.add_argument("--log-level", type=str, default='INFO')
     args = parser.parse_args()
+
+    logging.basicConfig(stream=sys.stdout, level=args.log_level)
 
     # load in configuration file
     with open(args.config, 'r') as f:

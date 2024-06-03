@@ -5,3 +5,5 @@ __pycache__
 .venv
 knn_data/
 data/box_*
+data/polbooks*
+imgs/

@@ -4,6 +4,7 @@ import numpy as np
 import scipy.sparse as sparse
 from copy import deepcopy
 import acquisitions
+import logging
 
 
 def get_models(G, model_names):
@@ -17,8 +18,7 @@ def get_models(G, model_names):
 
     return [deepcopy(MODELS[name]) for name in model_names]
 
-
-def load_graph(dataset, metric, numeigs=200, data_dir="data", returnX=False, returnK=False, knn=0):
+def create_graph(dataset, metric, numeigs=200, data_dir="data", returnX = False, returnK = False, knn=0):
     X, clusters = gl.datasets.load(dataset.split("-")[0], metric=metric)
     if dataset.split("-")[-1] == 'evenodd':
         labels = clusters % 2
@@ -86,11 +86,30 @@ def load_graph(dataset, metric, numeigs=200, data_dir="data", returnX=False, ret
 
     G.save(graph_filename)
     
+
+    auxillary = None
     if returnX:
-        return G, labels, trainset, normalization, X
-    
+        auxillary = X
     if returnK:
-        return G, labels, trainset, normalization, np.unique(clusters).size
+        auxillary = np.unique(labels).size
+
+    return G, labels, trainset, normalization, auxillary
+
+
+def load_graph(dataset, metric, numeigs=200, data_dir="data", returnX=False, returnK=False, knn=0):
+    if dataset in ['polbooks']:
+        logging.debug('Loading graph from graphlearning.datasets')
+        G = gl.datasets.load_graph(dataset)
+        logging.debug(f'Loaded graph, D.shape = {G.degree_matrix().shape}')
+        labels = G.labels
+        trainset = None
+        normalization = "normalized"
+        auxillary = np.unique(labels).size
+    else:
+        G, labels, trainset, normalization, auxillary = create_graph(dataset, metric, numeigs, data_dir, returnX, returnK, knn)
+    
+    if returnX or returnK:
+        return G, labels, trainset, normalization, auxillary
     
     return G, labels, trainset, normalization
 
@@ -139,6 +158,7 @@ def get_active_learner(acq_func_name, model, labeled_ind, labeled_ind_labels, no
         Based on the acquisition function name, determine if need to compute the covariance matrix for instantiating 
         active_learner object
     """
+    logging.debug(f"Creating active learner for {acq_func_name}")
     if len(acq_func_name.split("-")) > 1:
         numeigs = int(acq_func_name.split("-")[-1])
         
@@ -175,7 +195,7 @@ def get_active_learner(acq_func_name, model, labeled_ind, labeled_ind_labels, no
 
     else:
         acq_func, unc_method = get_unc_acq_func(af_name)
-        AL = gl.active_learning.active_learner(model, acq_func, labeled_ind.copy(), labeled_ind_labels.copy())
+        AL = gl.active_learning.active_learner(model, acq_func, labeled_ind.copy(), labeled_ind_labels.copy(), policy='prop')
     
     return AL
 
