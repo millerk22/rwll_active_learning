@@ -15,6 +15,7 @@ from functools import reduce
 from utils import *
 import logging
 import sys
+import argparse
 
 
 from joblib import Parallel, delayed
@@ -22,6 +23,7 @@ from joblib import Parallel, delayed
 if __name__ == "__main__":
     parser = ArgumentParser(description="Run Large Tests in Parallel of Active Learning Test for Graph Learning")
     parser.add_argument("--dataset", type=str, default='mnist-mod3')
+    parser.add_argument("--use-load-graph", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--metric", type=str, default='vae')
     parser.add_argument("--numcores", type=int, default=5)
     parser.add_argument("--iters", type=int, default=100)

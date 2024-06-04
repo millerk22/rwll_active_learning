@@ -14,6 +14,7 @@ from scipy.special import softmax
 from functools import reduce
 from utils import *
 import logging, sys
+import argparse
 
 from joblib import Parallel, delayed
 
@@ -22,6 +23,7 @@ from joblib import Parallel, delayed
 if __name__ == "__main__":
     parser = ArgumentParser(description="Compute Accuracies in Parallel of Active Learning Tests for Graph Learning")
     parser.add_argument("--dataset", type=str, default='mnist-mod3')
+    parser.add_argument("--use-load-graph", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--metric", type=str, default='vae')
     parser.add_argument("--numcores", type=int, default=5)
     parser.add_argument("--config", type=str, default="./config.yaml")
@@ -37,7 +39,7 @@ if __name__ == "__main__":
     with open(args.config, 'r') as f:
         config = yaml.safe_load(f)
 
-    G, labels, trainset, normalization = load_graph(args.dataset, args.metric, numeigs=None, knn=args.knn) # don't compute any eigenvalues
+    G, labels, trainset, normalization = load_graph(args.dataset, args.metric, numeigs=None, knn=args.knn, use_load_graph=args.use_load_graph) # don't compute any eigenvalues
     model_names = [name for name in config["acc_models"] if name[:3] != "gcn"]
     models = get_models(G, model_names)
     models_dict = {name:model for name, model in zip(model_names, models)}
