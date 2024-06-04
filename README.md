@@ -44,9 +44,31 @@ python accuracy_al_gl.py --dataset box --config config.yaml --resultsdir results
 python compile_summary.py --dataset box --resultsdir results
 ```
 
+You can also pass the flag `--use-load-graph` to use the loadgraph function in the GraphLearning package to load the similarity graph and knn information from the precomputed files. For example, in order to run the experiment on `pubmed` graph using `config-pubmed.yaml`, you can perform the following:
+
+```
+python test_al_gl.py --dataset pubmed --config config-pubmed.yaml --resultsdir results --metric raw --use-load-graph
+python accuracy_al_gl.py --dataset pubmed --config config-pubmed.yaml --resultsdir results --metric raw --use-load-graph
+python compile_summary.py --dataset pubmed --resultsdir results
+```
+
 We have provided the bash script ``run_decay.sh`` with most experiments commented out to archive the input parameter settings for the different test and provide an example of usage.
 
 __Note:__ In order to adapt the pipeline to the Isolet experiments and the VOpt/SigmaOpt "Full" acquisition functions, we created separate scripts ``test_al_gl_isolet.py``, ``accuracy_al_gl_isolet.py``, and ``test_al_gl_voptfull.py``. 
+
+## Viewing results
+
+After running the experiments above, you can view the results by running the following:
+```
+python inference.py -d pubmed
+```
+
+A list of options are available for viewing the results, which can be viewed by running:
+```
+python inference.py -h
+```
+
+You can also find the details for the plots on `FinalPlots.ipynb` notebook.
  
 ## VAE Training for EMNIST
 

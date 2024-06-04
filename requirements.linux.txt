@@ -33,6 +33,7 @@ pytz==2024.1
 PyYAML==6.0.1
 scikit-learn==1.4.2
 scipy==1.13.0
+seaborn==0.13.2
 six==1.16.0
 sympy==1.12
 threadpoolctl==3.5.0

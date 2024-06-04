@@ -6,9 +6,6 @@ from copy import deepcopy
 import acquisitions
 import logging
 
-GRAPH_DATASETS = ['polbooks', 'pubmed']
-
-
 def get_models(G, model_names):
     MODELS = {'poisson':gl.ssl.poisson(G),  # poisson learning
               'laplace':gl.ssl.laplace(G), # laplace learning
@@ -98,8 +95,8 @@ def create_graph(dataset, metric, numeigs=200, data_dir="data", returnX = False,
     return G, labels, trainset, normalization, auxillary
 
 
-def load_graph(dataset, metric, numeigs=200, data_dir="data", returnX=False, returnK=False, knn=0):
-    if dataset in GRAPH_DATASETS:
+def load_graph(dataset, metric, numeigs=200, data_dir="data", returnX=False, returnK=False, knn=0, use_load_graph=False):
+    if use_load_graph:
         logging.debug('Loading graph from graphlearning.datasets')
         G = gl.datasets.load_graph(dataset)
         logging.debug(f'Loaded graph, D.shape = {G.degree_matrix().shape}')
@@ -223,7 +220,7 @@ def get_graph_and_models(acq_funcs_names, model_names, args):
 
     # Load in the graph and labels
     print("Loading in Graph...")
-    G, labels, trainset, normalization, K = load_graph(args.dataset, args.metric, maxnumeigs, returnK=True, knn=args.knn)
+    G, labels, trainset, normalization, K = load_graph(args.dataset, args.metric, maxnumeigs, returnK=True, knn=args.knn, use_load_graph=args.use_load_graph)
     
     models = get_models(G, model_names)
     
