@@ -13,6 +13,9 @@ from glob import glob
 from scipy.special import softmax
 from functools import reduce
 from utils import *
+import logging
+import sys
+import argparse
 
 
 from joblib import Parallel, delayed
@@ -20,6 +23,7 @@ from joblib import Parallel, delayed
 if __name__ == "__main__":
     parser = ArgumentParser(description="Run Large Tests in Parallel of Active Learning Test for Graph Learning")
     parser.add_argument("--dataset", type=str, default='mnist-mod3')
+    parser.add_argument("--use-load-graph", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--metric", type=str, default='vae')
     parser.add_argument("--numcores", type=int, default=5)
     parser.add_argument("--iters", type=int, default=100)
@@ -29,7 +33,10 @@ if __name__ == "__main__":
     parser.add_argument("--K", type=int, default=0)
     parser.add_argument("--cheatK", type=int, default=50)
     parser.add_argument("--knn", type=int, default=0)
+    parser.add_argument("--log-level", type=str, default='INFO')
     args = parser.parse_args()
+
+    logging.basicConfig(level=getattr(logging, args.log_level), stream=sys.stdout)
 
     # load in configuration file
     with open(args.config, 'r') as f:
@@ -75,6 +82,8 @@ if __name__ == "__main__":
 
 
         def active_learning_test(acq_func_name, model_name, model):
+
+            logging.basicConfig(level=getattr(logging, args.log_level), stream=sys.stdout)
             '''
             Active learning test definition for parallelization.
             '''

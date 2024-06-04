@@ -1,5 +1,6 @@
 from graphlearning.active_learning import acquisition_function
 import numpy as np
+import logging
 
 
 class uncnormprop_plusplus(acquisition_function):
@@ -17,6 +18,7 @@ class uncnormprop_plusplus(acquisition_function):
         self.K = K
         
     def compute(self, u, candidate_ind):
+        # want to pick points with the highest uncertainty = smaller norm of u
         vals = 1. - np.linalg.norm(u[candidate_ind,:], axis=1)
         
         # scaling for p(x) \propto e^{x/T}, where T is scales as the values change. Ensures no numerical overflow occurs
@@ -27,7 +29,9 @@ class uncnormprop_plusplus(acquisition_function):
         p = np.exp(vals/T)
         
         # select a batch of points at random according to the probabilities previously calculated and then return standard basis vector of the maximizing index
-        k_choices = np.random.choice(np.arange(candidate_ind.size), 10, replace=False, p=p/p.sum())
+        logging.debug(f"probabilities = {p}, p_sum = {p.sum()}")
+        sample = min(10, candidate_ind.size)
+        k_choices = np.random.choice(np.arange(candidate_ind.size), sample, replace=False, p=p/p.sum())
         k_choice = k_choices[np.argmax(vals[k_choices])]
         acq_vals = np.zeros_like(candidate_ind)
         acq_vals[k_choice] = 1.
